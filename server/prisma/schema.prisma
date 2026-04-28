@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  student
+  admin
+}
+
+enum BookFormat {
+  digital
+  external
+  physical
+}
+
+model User {
+  id             String           @id @default(uuid())
+  email          String           @unique
+  password       String?
+  role           Role             @default(student)
+  displayName    String?
+  profilePath    String?
+  phone          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  books          Book[]           @relation("BookCreator")
+  ratings        Rating[]
+  libraryVisitor LibraryVisitor?
+}
+
+model College {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  createdAt   DateTime     @default(now())
+
+  departments Department[]
+  books       Book[]
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String
+  collegeId String
+  createdAt DateTime @default(now())
+
+  college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+}
+
+model Book {
+  id            String      @id @default(uuid())
+  title         String
+  description   String?
+  coverPath     String?
+  pdfPath       String?
+  externalLink  String?
+  category      String
+  collegeId     String?
+  format        BookFormat  @default(digital)
+  type          String?
+  rating        Float       @default(0)
+  readCount     Int         @default(0)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  shelfLocation String?
+
+  createdBy     User?       @relation("BookCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  college       College?    @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  ratings       Rating[]
+}
+
+model Verification {
+  id        String   @id @default(uuid())
+  email     String
+  token     String
+  code      String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  userId    String
+  bookId    String
+  rating    Int
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+}
+
+model LibraryVisitor {
+  id            String   @id @default(uuid())
+  userId        String?  @unique
+  visitorToken  String?  @unique
+  lastVisitedAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
