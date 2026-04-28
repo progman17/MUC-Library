@@ -297,7 +297,7 @@ const Books = () => {
                                         : `Top Rated in ${colleges.find(c => c.id === selectedCollege)?.name || 'College'}`}
                                 </h2>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                                 {topRatedBooks.map((book) => (
                                     <motion.div
                                         key={`top-${book.id}`}
@@ -320,8 +320,8 @@ const Books = () => {
                                                 />
                                             ) : (
                                                 <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-50/50 to-slate-200/50 dark:from-purple-900/50 dark:to-rose-900/50 p-4 text-center group-hover:from-primary-50/50 group-hover:to-primary-100/50 dark:group-hover:from-red-900/50 dark:group-hover:to-purple-900/50 transition-all duration-500 border dark:border-white/10">
-                                                    <BookOpen size={48} strokeWidth={1} className="text-slate-400 dark:text-white/60 mb-2 opacity-70 group-hover:text-primary-500 dark:group-hover:text-red-300 transition-colors duration-500" />
-                                                    <span className="text-xs text-slate-500 dark:text-white/70 font-semibold mt-2 line-clamp-2">Defualt Cover</span>
+                                                    <BookOpen size={36} strokeWidth={1} className="text-slate-400 dark:text-white/60 mb-2 opacity-70 group-hover:text-primary-500 dark:group-hover:text-red-300 transition-colors duration-500" />
+                                                    <span className="text-xs text-slate-500 dark:text-white/70 font-semibold mt-2 line-clamp-2">Default Cover</span>
                                                 </div>
                                             )}
 
@@ -334,7 +334,7 @@ const Books = () => {
                                                 </Link>
                                             </div>
                                         </div>
-                                        <div className="p-4">
+                                        <div className="p-3">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="text-xs font-semibold text-primary-600 uppercase tracking-wider">
                                                     {book.colleges?.name || 'Global'}
@@ -362,7 +362,7 @@ const Books = () => {
                             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {filteredBooks.map((book) => (
                                 <motion.div
                                     key={book.id}
@@ -380,8 +380,8 @@ const Books = () => {
                                             />
                                         ) : (
                                             <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-50/50 to-slate-200/50 dark:from-purple-900/50 dark:to-rose-900/50 p-4 text-center group-hover:from-primary-50/50 group-hover:to-primary-100/50 dark:group-hover:from-red-900/50 dark:group-hover:to-purple-900/50 transition-all duration-500 border dark:border-white/10">
-                                                <BookOpen size={64} strokeWidth={1} className="text-slate-400 dark:text-white/60 mb-2 opacity-70 group-hover:text-primary-500 dark:group-hover:text-red-300 transition-colors duration-500" />
-                                                <span className="text-sm text-slate-500 dark:text-white/70 font-semibold mt-2 line-clamp-2">Book Cover</span>
+                                                <BookOpen size={40} strokeWidth={1} className="text-slate-400 dark:text-white/60 mb-2 opacity-70 group-hover:text-primary-500 dark:group-hover:text-red-300 transition-colors duration-500" />
+                                                <span className="text-xs text-slate-500 dark:text-white/70 font-semibold mt-2 line-clamp-2">Book Cover</span>
                                             </div>
                                         )}
 
@@ -394,7 +394,7 @@ const Books = () => {
                                             </Link>
                                         </div>
                                     </div>
-                                    <div className="p-4">
+                                    <div className="p-3">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="text-xs font-semibold text-primary-600 dark:text-red-400 uppercase tracking-wider">
                                                 {book.colleges?.name || 'Global'}
