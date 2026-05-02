@@ -212,59 +212,128 @@ export default function Home() {
                                 <OrbitControls enableZoom={false} enablePan={false} autoRotate={false} maxPolarAngle={Math.PI / 2} />
                             </Canvas>
                         </div>
+                                {/* Colleges & Sections */}
                     </div>
                 </div>
             </section>
 
-            {/* Colleges & Sections */}
-            <section className="py-20 bg-gray-50 dark:bg-slate-950 transition-colors duration-700">
+            <section className="relative py-24 bg-gray-50 dark:bg-slate-950 transition-colors duration-700 overflow-hidden">
+
+                {/* Decorative radial glow blobs */}
+                <div className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-red-500/5 blur-3xl" />
+                <div className="pointer-events-none absolute bottom-0 right-0 w-80 h-80 rounded-full bg-violet-500/5 blur-3xl" />
+
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-16">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-4 dark:text-white">Browse by College & Section</h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto dark:text-slate-400">Find resources tailored to your specific field of study.</p>
+
+                    {/* ── Section Header ───────────────────────────────── */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 24 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6 }}
+                        className="text-center mb-16 space-y-4"
+                    >
+                        {/* Eyebrow label */}
+                        <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full
+                                         bg-red-50 dark:bg-red-900/20
+                                         border border-red-100 dark:border-red-800/30
+                                         text-red-600 dark:text-red-400
+                                         text-xs font-bold uppercase tracking-widest">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                            Academic Collections
+                        </span>
+
+                        {/* Main heading with gradient accent */}
+                        <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
+                            <span className="text-gray-900 dark:text-white">Browse by </span>
+                            <span className="bg-gradient-to-r from-red-600 via-rose-500 to-red-700 bg-clip-text text-transparent">
+                                College &amp; Section
+                            </span>
+                        </h2>
+
+                        {/* Animated underline */}
+                        <div className="flex justify-center">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                whileInView={{ width: '5rem' }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.7, delay: 0.3 }}
+                                className="h-1 rounded-full bg-gradient-to-r from-red-500 via-rose-400 to-red-600"
+                            />
+                        </div>
+
+                        <p className="text-gray-500 dark:text-slate-400 max-w-xl mx-auto text-base">
+                            Find resources tailored to your specific field of study.
+                        </p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {/* Dynamic Colleges */}
+                    {/* ── College Cards ────────────────────────────────── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {colleges.map((college, index) => {
                             const Icon = getIcon(college.name);
                             const color = getColor(index);
-                            // Extract the base color name (e.g., 'blue' from 'bg-blue-500') for dynamic classes
                             const baseColor = color.replace('bg-', '').replace('-500', '');
 
                             return (
                                 <motion.div
                                     key={college.id}
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 28 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     viewport={{ once: true }}
-                                    transition={{ delay: (index + 2) * 0.08 }}
+                                    transition={{ delay: index * 0.09, duration: 0.55 }}
+                                    whileHover={{ y: -6 }}
                                 >
-                                    <Link
-                                        to={`/books?college=${college.id}`}
-                                        className="relative block group h-full"
-                                    >
-                                        <div className={`absolute inset-0 bg-gradient-to-br from-${baseColor}-500/20 to-${baseColor}-600/5 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                                    <Link to={`/books?college=${college.id}`} className="relative block group h-full">
 
-                                        <div className="relative h-full bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 group-hover:-translate-y-2 overflow-hidden dark:bg-slate-900/60 dark:border-white/5">
-                                            {/* Decorative background circle */}
-                                            <div className={`absolute -right-8 -top-8 w-32 h-32 bg-${baseColor}-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700 ease-out dark:bg-${baseColor}-900/20`} />
+                                        {/* Glow halo behind card */}
+                                        <div className={`absolute inset-0 bg-gradient-to-br from-${baseColor}-500/25 to-${baseColor}-600/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
-                                            <div className="relative z-10">
-                                                <div className={`w-16 h-16 ${color} text-white rounded-2xl flex items-center justify-center mb-6 shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
-                                                    <Icon size={32} />
+                                        {/* Card surface */}
+                                        <div className="relative h-full flex flex-col
+                                                        bg-white dark:bg-slate-900/80
+                                                        backdrop-blur-xl
+                                                        border border-gray-100 dark:border-white/5
+                                                        rounded-3xl p-7
+                                                        shadow-[0_2px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_2px_20px_rgba(0,0,0,0.3)]
+                                                        group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.12)] dark:group-hover:shadow-[0_8px_40px_rgba(0,0,0,0.5)]
+                                                        transition-all duration-500 overflow-hidden">
+
+                                            {/* Decorative corner circle */}
+                                            <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full bg-${baseColor}-100/60 dark:bg-${baseColor}-900/20 group-hover:scale-[1.6] transition-transform duration-700 ease-out`} />
+
+                                            {/* Shimmer sweep */}
+                                            <span className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/30 to-white/0
+                                                             translate-x-[-120%] group-hover:translate-x-[120%]
+                                                             transition-transform duration-700 ease-in-out pointer-events-none rounded-3xl" />
+
+                                            {/* Card index number */}
+                                            <span className="absolute top-5 right-6 text-5xl font-black text-gray-100 dark:text-slate-800 select-none leading-none">
+                                                {String(index + 1).padStart(2, '0')}
+                                            </span>
+
+                                            <div className="relative z-10 flex flex-col flex-1">
+                                                {/* Icon orb */}
+                                                <div className={`w-14 h-14 ${color} rounded-2xl flex items-center justify-center mb-5
+                                                                 shadow-lg shadow-${baseColor}-500/30
+                                                                 group-hover:scale-110 group-hover:rotate-3
+                                                                 transition-all duration-300`}>
+                                                    <Icon size={28} className="text-white" />
                                                 </div>
 
-                                                <h3 className="text-2xl font-bold text-gray-900 mb-3 group-hover:text-primary-600 transition-colors dark:text-white">
+                                                {/* College name */}
+                                                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors duration-300 leading-tight">
                                                     {college.name}
                                                 </h3>
-                                                <p className="text-gray-500 text-sm mb-6 line-clamp-2 dark:text-slate-400">
+
+                                                {/* Description */}
+                                                <p className="text-gray-400 dark:text-slate-500 text-sm leading-relaxed flex-1 line-clamp-2">
                                                     Explore specialized resources and academic materials for {college.name}.
                                                 </p>
 
-                                                <div className="flex items-center text-sm font-semibold text-primary-600 group-hover:translate-x-2 transition-transform duration-300">
-                                                    <span>Browse Collection</span>
-                                                    <ArrowRight size={16} className="ml-2" />
+                                                {/* CTA */}
+                                                <div className="mt-5 pt-4 border-t border-gray-50 dark:border-slate-800 flex items-center gap-1.5 text-sm font-bold text-red-600 dark:text-red-500">
+                                                    <span className="group-hover:translate-x-1 transition-transform duration-300">Browse Collection</span>
+                                                    <ArrowRight size={15} className="group-hover:translate-x-2 transition-transform duration-300" />
                                                 </div>
                                             </div>
                                         </div>

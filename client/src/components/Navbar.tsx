@@ -5,6 +5,7 @@ import { Menu, X, User, BookOpen, Home as HomeIcon, Shield, LogOut, Users, Chevr
 import { useAuth, getMediaUrl } from '../context/AuthContext';
 import Swal from 'sweetalert2';
 import ThemeToggle from './ThemeToggle';
+import { siteConfig } from '../config/siteConfig';
 
 const Navbar = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -18,9 +19,9 @@ const Navbar = () => {
     };
 
     const links = [
-        { name: 'Home', path: '/', icon: HomeIcon },
-        { name: 'Books', path: '/books', icon: BookOpen },
-        { name: 'Developers', path: '/about-developers', icon: Users },
+        { name: 'Home',       path: '/',                 icon: HomeIcon },
+        { name: 'Books',      path: '/books',            icon: BookOpen },
+        { name: 'About & The Developer', path: '/about-developers', icon: Users },
     ];
 
     if (role === 'admin') {
@@ -60,25 +61,74 @@ const Navbar = () => {
         <nav className="fixed top-0 left-0 right-0 z-50 bg-red-300 backdrop-blur-xl border-b border-white/20 shadow-sm transition-all duration-300 supports-[backdrop-filter]:bg-white/60 dark:bg-black/40 dark:border-white/10 dark:shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
-                    {/* Logo */}
-                    <Link to="/" className="flex items-center space-x-3 group">
-                        <motion.img
-                            src="/muc.png"
-                            alt="MUC Library Logo"
-                            whileHover={{ rotate: 180, scale: 1.1 }}
-                            transition={{ duration: 0.6, type: "spring" }}
-                            className="
-                                        w-10 h-10 
-                                        rounded-xl 
-                                        bg-white/90 
-                                        shadow-[0_6px_20px_rgba(153,27,27,0.25)]
-                                        ring-1 ring-red-800/20
-                                        backdrop-blur-sm
-                                        "
-                        />
-                        <span className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight group-hover:text-primary-700 dark:group-hover:text-red-400 transition-colors">
-                            MUC Library
-                        </span>
+                    {/* ── Premium Logo ───────────────────────────────── */}
+                    <Link to="/" className="flex items-center gap-3 group select-none">
+
+                        {/* Logo image with animated glow ring */}
+                        <motion.div
+                            className="relative flex-shrink-0"
+                            whileHover={{ scale: 1.08 }}
+                            transition={{ type: 'spring', stiffness: 320, damping: 22 }}
+                        >
+                            {/* Outer animated glow ring */}
+                            <motion.span
+                                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-500 via-rose-500 to-red-700 opacity-0 blur-sm group-hover:opacity-70 transition-opacity duration-500"
+                                animate={{ scale: [1, 1.12, 1] }}
+                                transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
+                            />
+
+                            {/* Static soft ambient glow */}
+                            <span className="absolute inset-0 -z-10 rounded-2xl bg-red-600/20 blur-md scale-125" />
+
+                            {/* Logo image container */}
+                            <div className="relative w-11 h-11 rounded-2xl overflow-hidden
+                                            bg-white dark:bg-slate-900
+                                            border border-red-200/60 dark:border-red-800/40
+                                            shadow-[0_4px_18px_rgba(185,28,28,0.22),inset_0_1px_0_rgba(255,255,255,0.8)]
+                                            dark:shadow-[0_4px_18px_rgba(185,28,28,0.35)]
+                                            ring-2 ring-white/80 dark:ring-slate-800">
+
+                                <img
+                                    src={siteConfig.logoPath}
+                                    alt={`${siteConfig.siteName} Logo`}
+                                    className="w-full h-full object-contain p-0.5 group-hover:scale-110 transition-transform duration-500"
+                                />
+
+                                {/* Shimmer overlay on hover */}
+                                <span className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/40 to-white/0
+                                                 translate-x-[-100%] group-hover:translate-x-[100%]
+                                                 transition-transform duration-700 ease-in-out pointer-events-none" />
+                            </div>
+
+                        </motion.div>
+
+                        {/* Wordmark */}
+                        <motion.div
+                            className="flex flex-col leading-none"
+                            initial={{ opacity: 0, x: -6 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                        >
+                            {/* Main site name with gradient "MUC" accent */}
+                            <span className="flex items-baseline gap-1 text-xl font-extrabold tracking-tight">
+                                <span className="bg-gradient-to-r from-red-600 via-rose-500 to-red-700 bg-clip-text text-transparent
+                                                 drop-shadow-[0_1px_2px_rgba(185,28,28,0.3)]">
+                                    MUC
+                                </span>
+                                <span className="text-gray-800 dark:text-gray-100 font-bold">
+                                    Library
+                                </span>
+                            </span>
+
+                            {/* Subtle tagline — visible on hover */}
+                            <span className="text-[10px] font-medium tracking-widest uppercase
+                                             text-gray-400 dark:text-slate-500
+                                             max-w-0 overflow-hidden whitespace-nowrap
+                                             group-hover:max-w-xs transition-all duration-500 ease-in-out
+                                             opacity-0 group-hover:opacity-100">
+                                {siteConfig.tagline}
+                            </span>
+                        </motion.div>
                     </Link>
 
                     {/* Desktop Menu */}

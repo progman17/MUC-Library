@@ -5,6 +5,7 @@ import api from '../lib/api';
 import SEO from '../components/SEO';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { siteConfig } from '../config/siteConfig';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -13,7 +14,7 @@ const Login = () => {
     const [verifyLoading, setVerifyLoading] = useState(false);
     const [sent, setSent] = useState(false);
     const [error, setError] = useState('');
-    
+
     const { setAuthToken } = useAuth();
     const navigate = useNavigate();
 
@@ -22,8 +23,8 @@ const Login = () => {
         setLoading(true);
         setError('');
 
-        if (!email.endsWith('@muc.edu.eg') && !email.endsWith('@muc.edu.eg.com') && email !== 'admin@muc.edu.eg') {
-            setError('Please use your university email (@muc.edu.eg)');
+        if (!email.endsWith(siteConfig.allowedEmailDomain)) {
+            setError(`Please use your organization email (${siteConfig.allowedEmailDomain})`);
             setLoading(false);
             return;
         }
@@ -46,14 +47,12 @@ const Login = () => {
 
         try {
             const data = await api.post('/auth/verify-otp', { email, code: otp });
-            
             if (data.token) {
                 await setAuthToken(data.token);
                 navigate('/');
             } else {
                 throw new Error("Login failed, no token received.");
             }
-
         } catch (err: any) {
             console.error('Verification error:', err);
             setError(err.message || 'Failed to verify code');
@@ -62,14 +61,13 @@ const Login = () => {
         }
     };
 
-    // Shared input classes for dark mode support
     const inputBase = "w-full px-4 py-3 border rounded-lg outline-none transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-gray-300 dark:border-slate-600";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 px-4 transition-colors duration-300">
             <SEO
                 title="Login"
-                description="Sign in to MUC Library to access engineering resources."
+                description={`Sign in to ${siteConfig.siteName} to access academic resources.`}
             />
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -86,7 +84,6 @@ const Login = () => {
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Security Verification</h1>
                         <p className="text-gray-600 dark:text-gray-400 mb-8">Enter the 6-digit code from your email</p>
-
                         <form onSubmit={handleVerify} className="space-y-6">
                             <div className="text-left">
                                 <label htmlFor="otp" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -104,7 +101,6 @@ const Login = () => {
                                 />
                                 {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
                             </div>
-
                             <button
                                 type="submit"
                                 disabled={verifyLoading}
@@ -120,14 +116,9 @@ const Login = () => {
                                 )}
                             </button>
                         </form>
-
                         <button
                             type="button"
-                            onClick={() => {
-                                setSent(false);
-                                setOtp('');
-                                setError('');
-                            }}
+                            onClick={() => { setSent(false); setOtp(''); setError(''); }}
                             className="w-full mt-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-colors flex items-center justify-center space-x-2"
                         >
                             <ArrowLeft size={20} />
@@ -139,14 +130,13 @@ const Login = () => {
                         <div className="text-center mb-8">
                             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Welcome Back</h1>
                             <p className="text-gray-600 dark:text-gray-400">
-                                <span className="text-primary-600 dark:text-red-400 font-medium">Sign in</span> to access the MUC Library
+                                <span className="text-primary-600 dark:text-red-400 font-medium">Sign in</span> to access the {siteConfig.siteName}
                             </p>
                         </div>
-
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div>
                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    University Email
+                                    Organization Email
                                 </label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={20} />
@@ -155,14 +145,13 @@ const Login = () => {
                                         id="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="student@muc.edu.eg"
+                                        placeholder={`student${siteConfig.allowedEmailDomain}`}
                                         className={`${inputBase} pl-10`}
                                         required
                                     />
                                 </div>
                                 {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
                             </div>
-
                             <button
                                 type="submit"
                                 disabled={loading}

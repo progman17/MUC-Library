@@ -1,13 +1,15 @@
-export enum Role {
-  student = 'student',
-  admin = 'admin'
-}
+export const Role = {
+  student: 'student',
+  admin: 'admin',
+} as const;
+export type Role = typeof Role[keyof typeof Role];
 
-export enum BookFormat {
-  digital = 'digital',
-  external = 'external',
-  physical = 'physical'
-}
+export const BookFormat = {
+  digital: 'digital',
+  external: 'external',
+  physical: 'physical',
+} as const;
+export type BookFormat = typeof BookFormat[keyof typeof BookFormat];
 
 export interface User {
   id: string;
