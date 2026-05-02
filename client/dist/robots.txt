@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://muc-library.netlify.app/sitemap.xml
