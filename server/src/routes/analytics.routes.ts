@@ -110,4 +110,61 @@ router.get('/category/:category', async (req, res) => {
     }
 });
 
+router.get('/top-departments', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const departments = await prisma.department.findMany({
+            orderBy: { visitCount: 'desc' } as any,
+            take: 5,
+            include: { college: { select: { name: true } } }
+        });
+        res.json({ data: departments });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/college/:id/department-stats', authenticateToken, isAdmin, async (req, res) => {
+    try {
+        const collegeId = req.params.id;
+        const departments = await prisma.department.findMany({
+            where: { collegeId: String(collegeId) },
+            orderBy: { visitCount: 'desc' } as any
+        });
+
+        const stats = [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        for (const dept of departments) {
+            const visitsToday = await (prisma as any).departmentVisit.count({
+                where: { departmentId: dept.id, visitedAt: { gte: today } }
+            });
+            const visitsYesterday = await (prisma as any).departmentVisit.count({
+                where: { departmentId: dept.id, visitedAt: { gte: yesterday, lt: today } }
+            });
+
+            let growth = 0;
+            if (visitsYesterday === 0) {
+                growth = visitsToday > 0 ? 100 : 0;
+            } else {
+                growth = Math.round(((visitsToday - visitsYesterday) / visitsYesterday) * 100);
+            }
+
+            stats.push({
+                id: dept.id,
+                name: dept.name,
+                visitCount: (dept as any).visitCount,
+                visitsToday,
+                growth
+            });
+        }
+
+        res.json({ data: stats });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

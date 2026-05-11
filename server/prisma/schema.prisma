@@ -48,9 +48,11 @@ model Department {
   id        String   @id @default(uuid())
   name      String
   collegeId String
+  visitCount Int     @default(0)
   createdAt DateTime @default(now())
 
   college   College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+  visits    DepartmentVisit[]
 }
 
 model Book {
@@ -120,4 +122,17 @@ model CollegeVisit {
 
   @@index([userId, collegeId, visitedAt])
   @@index([visitorToken, collegeId, visitedAt])
+}
+
+model DepartmentVisit {
+  id            String   @id @default(uuid())
+  userId        String?
+  visitorToken  String?
+  departmentId  String
+  visitedAt     DateTime @default(now())
+
+  department    Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, departmentId, visitedAt])
+  @@index([visitorToken, departmentId, visitedAt])
 }

@@ -30,6 +30,10 @@ const AdminDashboard = () => {
     const [bookCounts, setBookCounts] = useState<Record<string, number>>({});
     const [visitCounts, setVisitCounts] = useState<Record<string, number>>({});
     const [growthData, setGrowthData] = useState<Record<string, number>>({});
+    const [topDepartments, setTopDepartments] = useState<any[]>([]);
+    const [selectedCollegeAnalytics, setSelectedCollegeAnalytics] = useState<string | null>(null);
+    const [departmentStats, setDepartmentStats] = useState<any[]>([]);
+    const [isDrillingDown, setIsDrillingDown] = useState(false);
 
     // Form State
     const [title, setTitle] = useState('');
@@ -97,6 +101,25 @@ const AdminDashboard = () => {
         setBookCounts(data);
         setVisitCounts(visits);
         setGrowthData(growth);
+
+        const topDepts = await analytics.getTopDepartments();
+        setTopDepartments(topDepts);
+    };
+
+    const handleDrillDown = async (collegeName: string) => {
+        const college = colleges.find(c => c.name === collegeName);
+        if (college) {
+            setIsDrillingDown(true);
+            setSelectedCollegeAnalytics(college.id);
+            const stats = await analytics.getDepartmentStatsByCollege(college.id);
+            setDepartmentStats(stats);
+        }
+    };
+
+    const handleBackToColleges = () => {
+        setIsDrillingDown(false);
+        setSelectedCollegeAnalytics(null);
+        setDepartmentStats([]);
     };
 
     const fetchColleges = async () => {
@@ -472,22 +495,53 @@ const AdminDashboard = () => {
                         className="space-y-8"
                     >
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl">
+                            <div className="lg:col-span-2 glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl relative overflow-hidden">
                                 <div className="flex items-center justify-between mb-8">
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
                                         <div className="p-2 bg-red-100 text-red-600 rounded-xl mr-3 dark:bg-red-900/30 dark:text-red-400">
-                                            <TrendingUp size={20} />
+                                            {isDrillingDown ? <Activity size={20} /> : <TrendingUp size={20} />}
                                         </div>
-                                        College Visit Traffic
+                                        {isDrillingDown ? (
+                                            <>
+                                                <button 
+                                                    onClick={handleBackToColleges}
+                                                    className="hover:text-red-600 transition-colors mr-2 flex items-center"
+                                                >
+                                                    Traffic
+                                                </button>
+                                                <span className="text-gray-400 font-medium">/ {colleges.find(c => c.id === selectedCollegeAnalytics)?.name}</span>
+                                            </>
+                                        ) : 'College Visit Traffic'}
                                     </h3>
-                                    <div className="text-xs font-medium text-gray-500 uppercase tracking-widest dark:text-slate-400">Monthly Analysis</div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-xs font-medium text-gray-500 uppercase tracking-widest dark:text-slate-400">
+                                            {isDrillingDown ? 'Department Breakdown' : 'Monthly Analysis'}
+                                        </div>
+                                        {isDrillingDown && (
+                                            <button 
+                                                onClick={handleBackToColleges}
+                                                className="text-[10px] font-bold bg-gray-100 text-gray-600 px-3 py-1 rounded-full hover:bg-gray-200 transition-all dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                                            >
+                                                Back
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
+                                
                                 <div className="h-[300px] w-full">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart 
                                             layout="vertical" 
-                                            data={Object.entries(visitCounts).map(([name, value]) => ({ name, value }))}
+                                            data={isDrillingDown 
+                                                ? departmentStats.map(s => ({ name: s.name, value: s.visitCount, growth: s.growth }))
+                                                : Object.entries(visitCounts).map(([name, value]) => ({ name, value, growth: growthData[name] || 0 }))
+                                            }
                                             margin={{ left: 40, right: 20 }}
+                                            onClick={(data) => {
+                                                if (!isDrillingDown && data && data.activeLabel) {
+                                                    handleDrillDown(String(data.activeLabel));
+                                                }
+                                            }}
                                         >
                                             <XAxis type="number" hide />
                                             <YAxis 
@@ -499,12 +553,28 @@ const AdminDashboard = () => {
                                                 tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
                                             />
                                             <Tooltip 
-                                                cursor={{ fill: 'transparent' }}
+                                                cursor={{ fill: 'rgba(255, 255, 255, 0.05)' }}
                                                 contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                                content={({ active, payload, label }) => {
+                                                    if (active && payload && payload.length) {
+                                                        return (
+                                                            <div className="bg-slate-900/90 backdrop-blur-md p-3 rounded-xl border border-white/10 shadow-2xl">
+                                                                <p className="font-bold text-white mb-1">{label}</p>
+                                                                <p className="text-red-400 text-sm font-medium">Visits: {payload[0].value}</p>
+                                                                {!isDrillingDown && <p className="text-gray-400 text-[10px] mt-1">Click to view departments</p>}
+                                                            </div>
+                                                        );
+                                                    }
+                                                    return null;
+                                                }}
                                             />
                                             <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20}>
-                                                {Object.entries(visitCounts).map((_, index) => (
-                                                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#b91c1c' : '#dc2626'} />
+                                                {(isDrillingDown ? departmentStats : Object.entries(visitCounts)).map((_, index) => (
+                                                    <Cell 
+                                                        key={`cell-${index}`} 
+                                                        fill={index % 2 === 0 ? '#b91c1c' : '#dc2626'} 
+                                                        className={!isDrillingDown ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}
+                                                    />
                                                 ))}
                                             </Bar>
                                         </BarChart>
@@ -512,6 +582,41 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
 
+                            <div className="glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center">
+                                    <div className="p-2 bg-blue-100 text-blue-600 rounded-xl mr-3 dark:bg-blue-900/30 dark:text-blue-400">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    Top Departments
+                                </h3>
+                                <div className="space-y-5">
+                                    {topDepartments.map((dept, index) => (
+                                        <div key={dept.id} className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 dark:bg-slate-800 dark:text-slate-400 group-hover:bg-red-100 group-hover:text-red-600 transition-colors">
+                                                    #{index + 1}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">{dept.name}</p>
+                                                    <p className="text-[10px] text-gray-500 font-medium dark:text-slate-500">{dept.college.name}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-sm font-black text-gray-900 dark:text-white">{dept.visitCount}</p>
+                                                <p className="text-[10px] text-emerald-500 font-bold">Visits</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {topDepartments.length === 0 && (
+                                        <div className="text-center py-10">
+                                            <p className="text-gray-400 text-sm">No department data yet</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <div className="glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl">
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center">
                                     <div className="p-2 bg-blue-100 text-blue-600 rounded-xl mr-3 dark:bg-blue-900/30 dark:text-blue-400">
@@ -528,15 +633,35 @@ const AdminDashboard = () => {
                                                 outerRadius={80}
                                                 paddingAngle={5}
                                                 dataKey="value"
+                                                onClick={(data) => {
+                                                    if (data && data.name) handleDrillDown(data.name);
+                                                }}
                                             >
                                                 {Object.entries(bookCounts).map((_, index) => (
-                                                    <Cell key={`cell-${index}`} fill={['#b91c1c', '#1e293b', '#475569', '#94a3b8'][index % 4]} />
+                                                    <Cell key={`cell-${index}`} fill={['#b91c1c', '#1e293b', '#475569', '#94a3b8'][index % 4]} className="cursor-pointer hover:opacity-80 transition-opacity" />
                                                 ))}
                                             </Pie>
                                             <Tooltip />
                                             <Legend verticalAlign="bottom" height={36}/>
                                         </PieChart>
                                     </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col justify-center glass rounded-3xl p-8 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl bg-gradient-to-br from-red-600/5 to-transparent">
+                                <h4 className="text-2xl font-black text-gray-900 dark:text-white mb-2">Deep Insights</h4>
+                                <p className="text-gray-500 dark:text-slate-400 mb-6 text-sm leading-relaxed">Click on any college in the charts to see the department-level breakdown. Monitor daily unique visits to optimize resource allocation and book procurement strategies.</p>
+                                <div className="flex gap-4">
+                                    <div className="p-4 bg-white/50 rounded-2xl border border-white dark:bg-slate-800/50 dark:border-white/5 flex-1">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Top Performing Dept</p>
+                                        <p className="text-base font-black text-red-600 truncate">{topDepartments[0]?.name || 'N/A'}</p>
+                                    </div>
+                                    <div className="p-4 bg-white/50 rounded-2xl border border-white dark:bg-slate-800/50 dark:border-white/5 flex-1">
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Highest Growth</p>
+                                        <p className="text-base font-black text-emerald-500">
+                                            +{Object.values(growthData).length > 0 ? Math.max(...Object.values(growthData) as number[]) : 0}%
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

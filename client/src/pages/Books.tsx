@@ -62,17 +62,31 @@ const Books = () => {
             setSelectedCategory('all');
         }
         
-        // Task 3: Increment college visit count (Unique Daily Visitors)
+        // Consolidated tracking: Record both College and Department visit in one call
         if (selectedCollege !== 'all' && role !== 'admin') {
             const STORAGE_KEY = 'muc_library_visitor_token';
-            const visitorToken = localStorage.getItem(STORAGE_KEY);
+            let visitorToken = localStorage.getItem(STORAGE_KEY);
+            if (!visitorToken) {
+                visitorToken = crypto.randomUUID();
+                localStorage.setItem(STORAGE_KEY, visitorToken);
+            }
             
+            let departmentIdToTrack = undefined;
+            if (selectedCategory !== 'all' && departments.length > 0) {
+                const dept = departments.find(d => 
+                    d.name.toLowerCase() === selectedCategory.toLowerCase() && 
+                    d.collegeId === selectedCollege
+                );
+                if (dept) departmentIdToTrack = dept.id;
+            }
+
             api.post(`/colleges/${selectedCollege}/visit`, { 
                 userId: user?.id,
-                visitorToken 
+                visitorToken,
+                departmentId: departmentIdToTrack
             }).catch(() => {});
         }
-    }, [selectedCollege, colleges, user, role]);
+    }, [selectedCollege, selectedCategory, colleges, departments, user, role]);
 
     useEffect(() => {
         fetchBooks();
@@ -83,7 +97,7 @@ const Books = () => {
         } else {
             setCategoryCount(0);
         }
-    }, [selectedCollege, selectedCategory, selectedType, sectionParam, formatParam, colleges]);
+    }, [selectedCollege, selectedCategory, selectedType, sectionParam, formatParam, colleges, departments]);
 
     const fetchColleges = async () => {
         try {
