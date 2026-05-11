@@ -14,7 +14,6 @@ enum Role {
 
 enum BookFormat {
   digital
-  external
   physical
 }
 
@@ -37,10 +36,12 @@ model User {
 model College {
   id          String       @id @default(uuid())
   name        String       @unique
+  visitCount  Int          @default(0)
   createdAt   DateTime     @default(now())
 
   departments Department[]
   books       Book[]
+  visits      CollegeVisit[]
 }
 
 model Department {
@@ -106,4 +107,17 @@ model LibraryVisitor {
   createdAt     DateTime @default(now())
 
   user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model CollegeVisit {
+  id            String   @id @default(uuid())
+  userId        String?
+  visitorToken  String?
+  collegeId     String
+  visitedAt     DateTime @default(now())
+
+  college       College  @relation(fields: [collegeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, collegeId, visitedAt])
+  @@index([visitorToken, collegeId, visitedAt])
 }

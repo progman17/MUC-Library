@@ -6,7 +6,6 @@ export type Role = typeof Role[keyof typeof Role];
 
 export const BookFormat = {
   digital: 'digital',
-  external: 'external',
   physical: 'physical',
 } as const;
 export type BookFormat = typeof BookFormat[keyof typeof BookFormat];
@@ -25,6 +24,7 @@ export interface User {
 export interface College {
   id: string;
   name: string;
+  visitCount?: number;
   createdAt?: string;
 }
 

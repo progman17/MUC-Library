@@ -52,10 +52,44 @@ router.get('/:id', async (req, res) => {
 
 router.post('/:id/read', async (req, res) => {
     try {
+        const { userId, visitorToken } = req.body;
         const book = await prisma.book.update({
             where: { id: req.params.id },
-            data: { readCount: { increment: 1 } }
+            data: { readCount: { increment: 1 } },
+            include: { college: true }
         });
+
+        if (book.collegeId && (userId || visitorToken)) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const existingVisit = await prisma.collegeVisit.findFirst({
+                where: {
+                    collegeId: book.collegeId,
+                    OR: [
+                        { userId: userId || undefined },
+                        { visitorToken: visitorToken || undefined }
+                    ],
+                    visitedAt: { gte: today }
+                }
+            });
+
+            if (!existingVisit) {
+                await prisma.collegeVisit.create({
+                    data: {
+                        collegeId: book.collegeId,
+                        userId: userId || null,
+                        visitorToken: visitorToken || null,
+                    }
+                });
+
+                await prisma.college.update({
+                    where: { id: book.collegeId },
+                    data: { visitCount: { increment: 1 } }
+                });
+            }
+        }
+
         res.json({ data: { readCount: book.readCount } });
     } catch (error: any) {
         res.status(500).json({ error: error.message });

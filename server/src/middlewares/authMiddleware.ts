@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import prisma from '../config/prisma';
 
 interface JwtPayload {
     userId: string;
@@ -27,9 +28,22 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
     });
 };
 
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-    if (req.user?.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
+export const isAdmin = async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user) {
+        return res.status(401).json({ error: 'Authentication required' });
     }
-    next();
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.userId },
+            select: { role: true }
+        });
+
+        if (user?.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        next();
+    } catch (error) {
+        return res.status(500).json({ error: 'Internal server error during authorization' });
+    }
 };

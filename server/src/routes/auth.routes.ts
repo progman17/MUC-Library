@@ -15,17 +15,19 @@ router.post('/request-otp', async (req, res) => {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        if (!email.endsWith('@muc.edu.eg') && !email.endsWith('@muc.edu.eg.com') && email !== 'admin@muc.edu.eg') {
+        const isAllowedEmail = email.endsWith('@muc.edu.eg') || email.endsWith('@muc.edu.eg.com');
+
+        if (!isAllowedEmail) {
             return res.status(400).json({ error: 'Only @muc.edu.eg emails are allowed' });
         }
 
         let user = await prisma.user.findUnique({ where: { email } });
+
         if (!user) {
-            const role = email === 'admin@admin.com' || email === 'admin@muc.edu.eg' ? 'admin' : 'student';
             user = await prisma.user.create({
                 data: {
                     email,
-                    role,
+                    role: 'student',
                     displayName: email.split('@')[0],
                 }
             });

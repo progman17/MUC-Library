@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Upload, Loader2, Edit, Trash2, BookOpen, Plus, School, MapPin, Search, Users } from 'lucide-react';
+import { Upload, Loader2, Edit, Trash2, BookOpen, Plus, School, MapPin, Search, Users, Cpu, HeartPulse, Briefcase, Activity, Globe, TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, UserCog } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
+import { motion } from 'framer-motion';
 import api from '../lib/api';
 import { useAuth, getMediaUrl } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Swal from 'sweetalert2';
 import { analytics } from '../lib/analytics';
-import type { Book, College, Department } from '../lib/types';
+import type { Book, College, Department, User } from '../lib/types';
 import { BookFormat } from '../lib/types';
 
 const AdminDashboard = () => {
@@ -19,10 +21,15 @@ const AdminDashboard = () => {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [editingBook, setEditingBook] = useState<Book | null>(null);
     const [hasInitializedEdit, setHasInitializedEdit] = useState(false);
+    const [activeTab, setActiveTab] = useState<'library' | 'users'>('library');
+    const [allUsers, setAllUsers] = useState<User[]>([]);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
 
     // Analytics State
     const [totalUsers, setTotalUsers] = useState(0);
     const [bookCounts, setBookCounts] = useState<Record<string, number>>({});
+    const [visitCounts, setVisitCounts] = useState<Record<string, number>>({});
+    const [growthData, setGrowthData] = useState<Record<string, number>>({});
 
     // Form State
     const [title, setTitle] = useState('');
@@ -31,7 +38,6 @@ const AdminDashboard = () => {
     const [collegeId, setCollegeId] = useState('');
     const [bookFormat, setBookFormat] = useState<BookFormat>(BookFormat.digital);
     const [shelfLocation, setShelfLocation] = useState('');
-    const [externalLink, setExternalLink] = useState('');
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [pdfFile, setPdfFile] = useState<File | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -45,13 +51,52 @@ const AdminDashboard = () => {
         fetchDepartments();
         fetchBooks();
         fetchAnalytics();
+        fetchUsers();
     }, [user, navigate]);
+
+    const fetchUsers = async () => {
+        try {
+            const { data } = await api.get('/users/all');
+            if (data) setAllUsers(data);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const handleUpdateRole = async (userId: string, newRole: string) => {
+        if (userId === user?.id) {
+            Swal.fire('Error', 'You cannot change your own role to avoid being locked out.', 'error');
+            return;
+        }
+
+        const result = await Swal.fire({
+            title: 'Change User Role?',
+            text: `Are you sure you want to change this user's role to ${newRole}?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, change it!',
+            confirmButtonColor: newRole === 'admin' ? '#d33' : '#3085d6',
+        });
+
+        if (result.isConfirmed) {
+            try {
+                await api.patch('/users/update-role', { userId, role: newRole });
+                Swal.fire('Success', 'User role updated successfully', 'success');
+                fetchUsers();
+                fetchAnalytics();
+            } catch (err: unknown) {
+                Swal.fire('Error', err instanceof Error ? err.message : String(err), 'error');
+            }
+        }
+    };
 
     const fetchAnalytics = async () => {
         const users = await analytics.getTotalUniqueUsers();
         setTotalUsers(users);
-        const counts = await analytics.getBookCountsByCollege();
-        setBookCounts(counts);
+        const { data, visits, growth } = await analytics.getBookCountsByCollege();
+        setBookCounts(data);
+        setVisitCounts(visits);
+        setGrowthData(growth);
     };
 
     const fetchColleges = async () => {
@@ -167,7 +212,6 @@ const AdminDashboard = () => {
         const deptToDelete = departments.find(d => d.id === id);
         if (!deptToDelete) return;
 
-        // Check if this department name exists in other colleges
         const sameNameDepts = departments.filter(d => d.name.toLowerCase() === deptToDelete.name.toLowerCase());
         const hasDuplicates = sameNameDepts.length > 1;
 
@@ -185,7 +229,6 @@ const AdminDashboard = () => {
             });
 
             if (result.isConfirmed) {
-                // Delete from ALL
                 try {
                     await api.delete(`/colleges/departments/name/${encodeURIComponent(deptToDelete.name)}`);
                     Swal.fire('Deleted!', `All "${deptToDelete.name}" departments have been deleted.`, 'success');
@@ -194,7 +237,6 @@ const AdminDashboard = () => {
                     Swal.fire('Error', err instanceof Error ? err.message : String(err), 'error');
                 }
             } else if (result.isDenied) {
-                // Delete ONLY this one
                 try {
                     await api.delete(`/colleges/departments/${id}`);
                     Swal.fire('Deleted!', 'Department has been deleted from this college.', 'success');
@@ -204,7 +246,6 @@ const AdminDashboard = () => {
                 }
             }
         } else {
-            // Standard delete if no duplicates
             const result = await Swal.fire({
                 title: 'Are you sure?',
                 text: "This will delete the department. Books assigned to it might lose their category association.",
@@ -229,7 +270,6 @@ const AdminDashboard = () => {
     const handleUpload = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation
         if (!editingBook) {
             if (!coverFile && bookFormat !== BookFormat.physical) {
                 setMessage('Please select a cover image.');
@@ -237,10 +277,6 @@ const AdminDashboard = () => {
             }
             if (bookFormat === BookFormat.digital && !pdfFile) {
                 setMessage('Please select a PDF file for digital books.');
-                return;
-            }
-            if (bookFormat === BookFormat.external && !externalLink) {
-                setMessage('Please provide an external link.');
                 return;
             }
             if (bookFormat === BookFormat.physical && !shelfLocation) {
@@ -260,8 +296,7 @@ const AdminDashboard = () => {
                 collegeId: collegeId || null,
                 format: bookFormat,
                 shelfLocation: bookFormat === BookFormat.physical ? shelfLocation : null,
-                externalLink: bookFormat === BookFormat.external ? externalLink : null,
-                type: bookFormat === BookFormat.external ? 'paid' : 'free' // Backward compatibility
+                type: 'free'
             };
 
             let bookId = editingBook?.id;
@@ -275,7 +310,6 @@ const AdminDashboard = () => {
                 setMessage('Book added successfully!');
             }
 
-            // Upload files if present
             if (coverFile || (pdfFile && bookFormat === BookFormat.digital)) {
                 const formData = new FormData();
                 if (coverFile) formData.append('cover', coverFile);
@@ -321,30 +355,24 @@ const AdminDashboard = () => {
         setTitle(book.title);
         setDescription(book.description || '');
 
-        // Handle case-insensitive category matching
         const matchingDept = departments.find(d => d.name.toLowerCase() === (book.category || '').toLowerCase());
-        setCategory(matchingDept ? matchingDept.name : book.category);
+        setCategory(matchingDept ? matchingDept.name : book.category || '');
 
         setCollegeId(book.collegeId || '');
 
-        // Determine format based on category and book_format
-        let format = book.format;
-        if (book.type === 'paid') {
-            format = BookFormat.external;
-        } else if (!format) {
+        let format = book.format as BookFormat;
+        if (!format) {
             format = BookFormat.digital;
         }
-        setBookFormat(format!);
+        setBookFormat(format);
 
         setShelfLocation(book.shelfLocation || '');
-        setExternalLink(book.externalLink || '');
         setCoverFile(null);
         setPdfFile(null);
         setMessage('');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }, [departments]);
 
-    // Handle incoming edit request from navigation state
     useEffect(() => {
         if (location.state?.editBook && departments.length > 0 && !hasInitializedEdit) {
             startEdit(location.state.editBook);
@@ -360,7 +388,6 @@ const AdminDashboard = () => {
         setCollegeId('');
         setBookFormat(BookFormat.digital);
         setShelfLocation('');
-        setExternalLink('');
         setCoverFile(null);
         setPdfFile(null);
         setMessage('');
@@ -377,20 +404,27 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Stats Section */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    {/* Total Users Card */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4 dark:bg-slate-900/50 dark:border-white/5 dark:backdrop-blur-md">
                         <div className="p-3 bg-blue-100 text-blue-600 rounded-xl dark:bg-blue-900/30 dark:text-blue-400">
                             <Users size={28} />
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Total Library Users</p>
+                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Unique Visitors</p>
                             <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{totalUsers}</h3>
                         </div>
                     </div>
 
-                    {/* Total Books Card */}
+                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4 dark:bg-slate-900/50 dark:border-white/5 dark:backdrop-blur-md">
+                        <div className="p-3 bg-indigo-100 text-indigo-600 rounded-xl dark:bg-indigo-900/30 dark:text-indigo-400">
+                            <UserCog size={28} />
+                        </div>
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Registered Users</p>
+                            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{allUsers.length}</h3>
+                        </div>
+                    </div>
+
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4 dark:bg-slate-900/50 dark:border-white/5 dark:backdrop-blur-md">
                         <div className="p-3 bg-emerald-100 text-emerald-600 rounded-xl dark:bg-emerald-900/30 dark:text-emerald-400">
                             <BookOpen size={28} />
@@ -401,7 +435,6 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    {/* Colleges Count Card */}
                     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4 dark:bg-slate-900/50 dark:border-white/5 dark:backdrop-blur-md">
                         <div className="p-3 bg-purple-100 text-purple-600 rounded-xl dark:bg-purple-900/30 dark:text-purple-400">
                             <School size={28} />
@@ -413,20 +446,167 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Detailed Book Counts by College */}
+                <div className="flex space-x-1 p-1 bg-gray-200/50 dark:bg-slate-900/50 rounded-2xl w-fit backdrop-blur-md border border-white/20 dark:border-white/5">
+                    <button
+                        onClick={() => setActiveTab('library')}
+                        className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all duration-300 ${activeTab === 'library' ? 'bg-white text-primary-700 shadow-sm dark:bg-slate-800 dark:text-red-400' : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    >
+                        <BookOpen size={18} />
+                        <span>Library Management</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all duration-300 ${activeTab === 'users' ? 'bg-white text-primary-700 shadow-sm dark:bg-slate-800 dark:text-red-400' : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    >
+                        <UserCog size={18} />
+                        <span>Manage Users</span>
+                    </button>
+                </div>
+
+                {activeTab === 'library' ? (
+                    <>
                 {Object.keys(bookCounts).length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-                        {Object.entries(bookCounts).map(([college, count]) => (
-                            <div key={college} className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 flex flex-col items-center text-center dark:bg-slate-900/50 dark:border-white/5 dark:backdrop-blur-md">
-                                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 dark:text-slate-400">{college}</span>
-                                <span className="text-xl font-bold text-gray-900 dark:text-white">{count}</span>
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-8"
+                    >
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <div className="lg:col-span-2 glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl">
+                                <div className="flex items-center justify-between mb-8">
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                                        <div className="p-2 bg-red-100 text-red-600 rounded-xl mr-3 dark:bg-red-900/30 dark:text-red-400">
+                                            <TrendingUp size={20} />
+                                        </div>
+                                        College Visit Traffic
+                                    </h3>
+                                    <div className="text-xs font-medium text-gray-500 uppercase tracking-widest dark:text-slate-400">Monthly Analysis</div>
+                                </div>
+                                <div className="h-[300px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart 
+                                            layout="vertical" 
+                                            data={Object.entries(visitCounts).map(([name, value]) => ({ name, value }))}
+                                            margin={{ left: 40, right: 20 }}
+                                        >
+                                            <XAxis type="number" hide />
+                                            <YAxis 
+                                                dataKey="name" 
+                                                type="category" 
+                                                axisLine={false} 
+                                                tickLine={false}
+                                                width={100}
+                                                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }}
+                                            />
+                                            <Tooltip 
+                                                cursor={{ fill: 'transparent' }}
+                                                contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px', color: '#fff' }}
+                                            />
+                                            <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={20}>
+                                                {Object.entries(visitCounts).map((_, index) => (
+                                                    <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#b91c1c' : '#dc2626'} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
-                        ))}
-                    </div>
+
+                            <div className="glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 shadow-2xl">
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-8 flex items-center">
+                                    <div className="p-2 bg-blue-100 text-blue-600 rounded-xl mr-3 dark:bg-blue-900/30 dark:text-blue-400">
+                                        <Globe size={20} />
+                                    </div>
+                                    Library Distribution
+                                </h3>
+                                <div className="h-[250px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={Object.entries(bookCounts).map(([name, value]) => ({ name, value }))}
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {Object.entries(bookCounts).map((_, index) => (
+                                                    <Cell key={`cell-${index}`} fill={['#b91c1c', '#1e293b', '#475569', '#94a3b8'][index % 4]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                            <Legend verticalAlign="bottom" height={36}/>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {Object.entries(visitCounts).map(([name, visits], index) => {
+                                const icons: Record<string, any> = {
+                                    'Engineering': Cpu,
+                                    'Nursing': HeartPulse,
+                                    'Business': Briefcase,
+                                    'Physical Therapy': Activity,
+                                    'Global': Globe
+                                };
+                                const Icon = icons[name] || School;
+                                const growth = growthData[name] || 0;
+                                const visitsValue = visits as number;
+                                const maxVisits = Math.max(...Object.values(visitCounts) as number[]);
+                                const progress = (visitsValue / maxVisits) * 100;
+                                const isTrending = visitsValue === maxVisits && visitsValue > 0;
+
+                                return (
+                                    <motion.div
+                                        key={name}
+                                        whileHover={{ y: -5 }}
+                                        className="relative group glass rounded-3xl p-6 border border-white/40 dark:bg-slate-900/50 dark:border-white/5 overflow-hidden"
+                                    >
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className={`p-3 rounded-2xl ${index % 2 === 0 ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400' : 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>
+                                                <Icon size={24} />
+                                            </div>
+                                            {isTrending && (
+                                                <span className="flex items-center px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-bold uppercase tracking-tighter animate-pulse dark:bg-red-900/40 dark:text-red-300">
+                                                    Hot
+                                                </span>
+                )}
+                                        </div>
+
+                                        <div className="space-y-1 mb-6">
+                                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">{name}</h4>
+                                            <div className="flex items-end gap-2">
+                                                <span className="text-3xl font-black text-gray-900 dark:text-white">{visitsValue.toLocaleString()}</span>
+                                                <span className={`text-xs font-bold mb-1 flex items-center ${growth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                    {growth >= 0 ? <TrendingUp size={12} className="mr-0.5" /> : <TrendingDown size={12} className="mr-0.5" />}
+                                                    {Math.abs(growth)}%
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase">
+                                                <span>Popularity</span>
+                                                <span>{Math.round(progress)}%</span>
+                                            </div>
+                                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden dark:bg-slate-800">
+                                                <motion.div 
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${progress}%` }}
+                                                    transition={{ duration: 1, delay: 0.5 }}
+                                                    className="h-full bg-gradient-to-r from-red-600 to-rose-400"
+                                                />
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                    </motion.div>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Form Section */}
                     <div className="lg:col-span-4">
                         <div className="glass rounded-3xl p-6 sticky top-24 flex flex-col h-[calc(100vh-120px)] transition-all duration-300 hover:shadow-float border border-white/40 dark:bg-slate-900/50 dark:border-white/10 dark:backdrop-blur-xl">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6 flex items-center justify-between flex-shrink-0">
@@ -440,7 +620,7 @@ const AdminDashboard = () => {
                                     <button onClick={resetForm} className="text-sm font-medium text-red-600 hover:text-red-700 bg-red-50 px-3 py-1 rounded-full transition-colors dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50">
                                         Cancel
                                     </button>
-                                )}
+                )}
                             </h2>
 
                             <form onSubmit={handleUpload} className="flex flex-col h-full overflow-hidden">
@@ -477,7 +657,7 @@ const AdminDashboard = () => {
                                                 className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all duration-200 appearance-none dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-200 dark:focus:border-red-500 dark:focus:ring-red-500/20"
                                             >
                                                 <option value="" disabled>Select College</option>
-                                                {colleges.map((college) => (
+                                                {[...colleges].sort((a: College, b: College) => a.name.localeCompare(b.name)).map((college: College) => (
                                                     <option key={college.id} value={college.id}>{college.name}</option>
                                                 ))}
                                             </select>
@@ -487,7 +667,7 @@ const AdminDashboard = () => {
                                         </div>
                                     </div>
 
-                                    {collegeId && departments.filter(d => d.collegeId === collegeId).length > 0 && (
+                                    {collegeId && departments.filter((d: Department) => d.collegeId === collegeId).length > 0 && (
                                         <div className="space-y-1.5 animate-fade-in">
                                             <label className="block text-sm font-semibold text-gray-700 ml-1 dark:text-slate-300">Department</label>
                                             <div className="relative">
@@ -497,9 +677,10 @@ const AdminDashboard = () => {
                                                     className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all duration-200 appearance-none dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-200 dark:focus:border-red-500 dark:focus:ring-red-500/20"
                                                 >
                                                     <option value="" disabled>Select Department</option>
-                                                    {departments
-                                                        .filter(d => d.collegeId === collegeId)
-                                                        .map(dept => (
+                                                    {[...departments]
+                                                        .filter((d: Department) => d.collegeId === collegeId)
+                                                        .sort((a: Department, b: Department) => a.name.localeCompare(b.name))
+                                                        .map((dept: Department) => (
                                                             <option key={dept.id} value={dept.name}>{dept.name}</option>
                                                         ))
                                                     }
@@ -509,7 +690,7 @@ const AdminDashboard = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    )}
+                )}
 
                                     <div className="space-y-1.5">
                                         <label className="block text-sm font-semibold text-gray-700 ml-1 dark:text-slate-300">Format</label>
@@ -520,7 +701,6 @@ const AdminDashboard = () => {
                                                 className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all duration-200 appearance-none dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-200 dark:focus:border-red-500 dark:focus:ring-red-500/20"
                                             >
                                                 <option value="digital">Digital (PDF)</option>
-                                                <option value="external">External Link (Paid)</option>
                                                 <option value="physical">Physical Book</option>
                                             </select>
                                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
@@ -544,21 +724,7 @@ const AdminDashboard = () => {
                                                 />
                                             </div>
                                         </div>
-                                    )}
-
-                                    {bookFormat === 'external' && (
-                                        <div className="space-y-1.5 animate-fade-in">
-                                            <label className="block text-sm font-semibold text-gray-700 ml-1 dark:text-slate-300">External Link</label>
-                                            <input
-                                                type="url"
-                                                value={externalLink}
-                                                onChange={(e) => setExternalLink(e.target.value)}
-                                                placeholder="https://example.com/book"
-                                                className="w-full px-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all duration-200 dark:bg-slate-900/50 dark:border-slate-700 dark:text-slate-200 dark:focus:border-red-500 dark:focus:ring-red-500/20"
-                                                required
-                                            />
-                                        </div>
-                                    )}
+                )}
 
                                     <div className="space-y-4 pt-2">
                                         <div className="p-4 border-2 border-dashed border-gray-200 rounded-xl hover:border-primary-300 hover:bg-primary-50/30 transition-all duration-300 group cursor-pointer relative dark:border-slate-700 dark:hover:border-red-500/50 dark:hover:bg-red-900/10">
@@ -599,7 +765,7 @@ const AdminDashboard = () => {
                                                     {pdfFile && <p className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full">{pdfFile.name}</p>}
                                                 </div>
                                             </div>
-                                        )}
+                )}
                                     </div>
 
                                     {message && (
@@ -608,10 +774,10 @@ const AdminDashboard = () => {
                                                 <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             ) : (
                                                 <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
-                                            )}
+                )}
                                             {message}
                                         </div>
-                                    )}
+                )}
                                 </div>
 
                                 <button
@@ -625,9 +791,7 @@ const AdminDashboard = () => {
                         </div>
                     </div>
 
-                    {/* List Section */}
                     <div className="lg:col-span-8 space-y-8">
-                        {/* Colleges Management */}
                         <div className="glass rounded-3xl p-6 sm:p-8 border border-white/40 dark:bg-slate-900/50 dark:backdrop-blur-xl dark:border-white/5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center dark:text-white">
@@ -654,7 +818,7 @@ const AdminDashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {colleges.map((college) => (
+                                {colleges.map((college: College) => (
                                     <div key={college.id} className="group flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-card hover:border-primary-100 transition-all duration-300 dark:bg-slate-900/50 dark:border-white/5 dark:hover:bg-white/5">
                                         <span className="font-semibold text-gray-800 text-lg group-hover:text-primary-700 transition-colors dark:text-slate-200 dark:group-hover:text-red-400">{college.name}</span>
                                         <button
@@ -669,7 +833,6 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Departments Management */}
                         <div className="glass rounded-3xl p-6 sm:p-8 border border-white/40 dark:bg-slate-900/50 dark:backdrop-blur-xl dark:border-white/5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center dark:text-white">
@@ -680,11 +843,11 @@ const AdminDashboard = () => {
                                 </h2>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {departments.map((dept) => (
+                                {departments.map((dept: Department) => (
                                     <div key={dept.id} className="group flex items-center justify-between p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-card hover:border-primary-100 transition-all duration-300 dark:bg-slate-900/50 dark:border-white/5 dark:hover:bg-white/5">
                                         <div>
                                             <span className="font-semibold text-gray-800 text-lg group-hover:text-primary-700 transition-colors block dark:text-slate-200 dark:group-hover:text-red-400">{dept.name}</span>
-                                            <span className="text-xs text-gray-500 dark:text-slate-400">{colleges.find(c => c.id === dept.collegeId)?.name}</span>
+                                            <span className="text-xs text-gray-500 dark:text-slate-400">{colleges.find((c: College) => c.id === dept.collegeId)?.name}</span>
                                         </div>
                                         <button
                                             onClick={() => handleDeleteDepartment(dept.id)}
@@ -698,7 +861,6 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Books List */}
                         <div className="glass rounded-3xl p-6 sm:p-8 border border-white/40 dark:bg-slate-900/50 dark:backdrop-blur-xl dark:border-white/5">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                                 <h2 className="text-2xl font-bold text-gray-900 flex items-center dark:text-white">
@@ -720,11 +882,11 @@ const AdminDashboard = () => {
                             </div>
 
                             <div className="space-y-4">
-                                {books.filter(book =>
+                                {books.filter((book: Book) =>
                                     book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                     book.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                     book.category?.toLowerCase().includes(searchTerm.toLowerCase())
-                                ).map((book) => (
+                                ).map((book: Book) => (
                                     <div key={book.id} className="group flex flex-col sm:flex-row items-start p-5 bg-white border border-gray-100 rounded-2xl hover:shadow-card hover:border-primary-100 transition-all duration-300 dark:bg-slate-900/50 dark:border-white/5 dark:hover:bg-white/5">
                                         <div className="w-full sm:w-20 h-48 sm:h-28 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md transition-all mb-4 sm:mb-0 dark:bg-slate-800">
                                             {book.coverPath ? (
@@ -737,7 +899,7 @@ const AdminDashboard = () => {
                                                 <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-50/50 to-slate-200/50 dark:from-purple-900/50 dark:to-rose-900/50 p-2 text-center border dark:border-white/10">
                                                     <BookOpen size={32} strokeWidth={1.5} className="text-slate-400 dark:text-white/60 mb-1 opacity-70" />
                                                 </div>
-                                            )}
+                )}
                                         </div>
 
                                         <div className="sm:ml-6 flex-1 min-w-0 w-full">
@@ -753,7 +915,7 @@ const AdminDashboard = () => {
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
                                                                 Global
                                                             </span>
-                                                        )}
+                )}
                                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200 capitalize dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
                                                             {book.format}
                                                         </span>
@@ -761,7 +923,7 @@ const AdminDashboard = () => {
                                                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-50 text-orange-700 border border-orange-100 capitalize dark:bg-orange-900/20 dark:text-orange-300 dark:border-orange-900/50">
                                                                 {book.category}
                                                             </span>
-                                                        )}
+                )}
                                                     </div>
                                                 </div>
                                                 <div className="flex space-x-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200">
@@ -794,11 +956,104 @@ const AdminDashboard = () => {
                                         <h3 className="text-lg font-medium text-gray-900">No books found</h3>
                                         <p className="text-gray-500 mt-1">Get started by adding your first book to the collection.</p>
                                     </div>
-                                )}
-                            </div>
+                )}
                         </div>
                     </div>
                 </div>
+            </div>
+            </>
+                ) : (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="glass rounded-3xl p-6 sm:p-8 border border-white/40 dark:bg-slate-900/50 dark:backdrop-blur-xl dark:border-white/5"
+                    >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 flex items-center dark:text-white">
+                                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-xl mr-3 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                    <Users size={24} />
+                                </div>
+                                Manage Users <span className="ml-3 text-sm font-medium bg-gray-100 text-gray-600 px-3 py-1 rounded-full dark:bg-slate-800 dark:text-slate-300">{allUsers.length}</span>
+                            </h2>
+                            <div className="relative w-full sm:w-72">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                                <input
+                                    type="text"
+                                    value={userSearchTerm}
+                                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                                    placeholder="Search by email..."
+                                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none transition-all duration-200 dark:bg-slate-900/80 dark:border-slate-700 dark:text-slate-200 dark:focus:ring-red-500/20 dark:focus:border-red-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100 dark:border-white/5">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-gray-50/50 dark:bg-slate-800/50">
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-slate-400">User</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-slate-400">Role</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-slate-400">Joined</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider dark:text-slate-400 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                    {allUsers.filter(u => 
+                                        u.email.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+                                        u.displayName?.toLowerCase().includes(userSearchTerm.toLowerCase())
+                                    ).map((u) => (
+                                        <tr key={u.id} className="hover:bg-gray-50/30 dark:hover:bg-white/5 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-gray-500 font-bold overflow-hidden border border-white/20">
+                                                        {u.profilePath ? (
+                                                            <img src={getMediaUrl(u.profilePath)} alt={u.displayName} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            u.displayName?.charAt(0).toUpperCase() || u.email.charAt(0).toUpperCase()
+                )}
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-bold text-gray-900 dark:text-white">{u.displayName || 'No Name'}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-slate-400">{u.email}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                    u.role === 'admin' 
+                                                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                                                        : 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-400'
+                                                }`}>
+                                                    {u.role === 'admin' ? <ShieldAlert size={12} className="mr-1" /> : <ShieldCheck size={12} className="mr-1" />}
+                                                    {u.role.toUpperCase()}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
+                                                {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                                                {u.id !== user?.id ? (
+                                                    <button
+                                                        onClick={() => handleUpdateRole(u.id, u.role === 'admin' ? 'student' : 'admin')}
+                                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                                                            u.role === 'admin'
+                                                                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                                                                : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/20'
+                                                        }`}
+                                                    >
+                                                        {u.role === 'admin' ? 'Demote to Student' : 'Promote to Admin'}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs font-medium text-gray-400 italic">You (Current Admin)</span>
+                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
             </div>
         </div>
     );

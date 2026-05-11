@@ -23,7 +23,10 @@ const Login = () => {
         setLoading(true);
         setError('');
 
-        if (!email.endsWith(siteConfig.allowedEmailDomain)) {
+        const adminEmails = ['admin@admin.com', 'admin@muc.edu.eg'];
+        const isAllowed = email.endsWith(siteConfig.allowedEmailDomain) || adminEmails.includes(email);
+
+        if (!isAllowed) {
             setError(`Please use your organization email (${siteConfig.allowedEmailDomain})`);
             setLoading(false);
             return;

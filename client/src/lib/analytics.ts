@@ -42,11 +42,11 @@ export const analytics = {
      */
     getBookCountsByCollege: async () => {
         try {
-            const { data } = await api.get('/analytics/books');
-            return data || {};
+            const { data, visits, growth } = await api.get('/analytics/books');
+            return { data: data || {}, visits: visits || {}, growth: growth || {} };
         } catch (error) {
             console.error('Error fetching book counts by college:', error);
-            return {};
+            return { data: {}, visits: {}, growth: {} };
         }
     },
 

@@ -76,4 +76,55 @@ router.delete('/departments/name/:name', async (req, res) => {
     }
 });
 
+router.post('/:id/visit', async (req, res) => {
+    try {
+        const { userId, visitorToken } = req.body;
+        const collegeId = req.params.id;
+
+        if (!userId && !visitorToken) {
+            return res.status(400).json({ error: 'userId or visitorToken is required' });
+        }
+
+        // Get start of today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Check for existing visit today
+        const existingVisit = await prisma.collegeVisit.findFirst({
+            where: {
+                collegeId,
+                OR: [
+                    { userId: userId || undefined },
+                    { visitorToken: visitorToken || undefined }
+                ],
+                visitedAt: {
+                    gte: today
+                }
+            }
+        });
+
+        if (!existingVisit) {
+            // New unique visit today
+            await prisma.collegeVisit.create({
+                data: {
+                    collegeId,
+                    userId: userId || null,
+                    visitorToken: visitorToken || null,
+                }
+            });
+
+            const college = await prisma.college.update({
+                where: { id: collegeId },
+                data: { visitCount: { increment: 1 } }
+            });
+            return res.json({ data: { visitCount: college.visitCount, unique: true } });
+        }
+
+        const college = await prisma.college.findUnique({ where: { id: collegeId } });
+        res.json({ data: { visitCount: college?.visitCount, unique: false } });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

@@ -14,7 +14,7 @@ interface Book {
     coverPath: string | null;
     pdfPath: string | null;
     category: string;
-    type: 'free' | 'paid';
+    type: 'free';
     externalLink?: string;
     rating: number;
     readCount: number;
@@ -47,10 +47,17 @@ const BookDetails = () => {
                 if (!data) throw new Error('Book not found');
                 setBook(data);
 
-                // Increment read count ONCE per mount
-                if (!readIncrementedRef.current) {
+                // Increment read count ONCE per mount (Skip for Admins)
+                if (!readIncrementedRef.current && role !== 'admin') {
                     readIncrementedRef.current = true;
-                    api.post(`/books/${id}/read`, {}).catch(() => {});
+                    
+                    const STORAGE_KEY = 'muc_library_visitor_token';
+                    const visitorToken = localStorage.getItem(STORAGE_KEY);
+                    
+                    api.post(`/books/${id}/read`, { 
+                        userId: user?.id,
+                        visitorToken 
+                    }).catch(() => {});
                 }
             } catch (error) {
                 console.error('Error fetching book:', error);
@@ -168,17 +175,6 @@ const BookDetails = () => {
                                     </a>
                                 )}
 
-                                {book.type === 'paid' && book.externalLink && (
-                                    <a
-                                        href={book.externalLink}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors dark:bg-gradient-to-r dark:from-sky-600 dark:to-blue-700 dark:hover:from-sky-700 dark:hover:to-blue-800 shadow-lg dark:shadow-blue-900/20"
-                                    >
-                                        <BookOpen size={20} className="mr-2" />
-                                        Go to Source
-                                    </a>
-                                )}
 
                                 {role === 'admin' && (
                                     <div className="flex gap-2">
@@ -223,8 +219,8 @@ const BookDetails = () => {
                                 <span className="px-3 py-1 bg-primary-50 text-primary-700 rounded-full text-sm font-medium uppercase tracking-wide dark:bg-red-900/30 dark:text-red-300 dark:border dark:border-red-900">
                                     {book.category}
                                 </span>
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium uppercase tracking-wide ${book.type === 'free' ? 'bg-green-100 text-green-800 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border dark:border-emerald-900' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:border dark:border-blue-900'}`}>
-                                    {book.type}
+                                <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium uppercase tracking-wide dark:bg-emerald-900/30 dark:text-emerald-300 dark:border dark:border-emerald-900">
+                                    Free
                                 </span>
                                 <div className="flex items-center text-yellow-400 dark:text-yellow-300">
                                     <Star size={18} fill="currentColor" />

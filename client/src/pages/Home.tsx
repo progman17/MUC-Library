@@ -1,5 +1,7 @@
 import { useRef, useEffect, useState, Suspense } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, extend } from '@react-three/fiber';
+import * as THREE from 'three';
+extend(THREE);
 import { OrbitControls, Float, ContactShadows, Environment } from '@react-three/drei';
 import type { Mesh, Group } from 'three';
 import { motion } from 'framer-motion';
@@ -7,7 +9,6 @@ import { Link } from 'react-router-dom';
 import { Cpu, Zap, PenTool, ArrowRight, Book } from 'lucide-react';
 import SEO from '../components/SEO';
 import api from '../lib/api';
-
 // === Book3D component: Open-Book cinematic animation ===
 // هذا المكون يمثل الكتاب ثلاثي الأبعاد مع رسوم متحركة للفتح التلقائي
 function Book3D({ openTarget = 1 }) {
@@ -102,7 +103,7 @@ function Book3D({ openTarget = 1 }) {
                         return (
                             <mesh
                                 key={i}
-                                ref={(el) => makePageRef(el, i)}
+                                ref={(el: THREE.Mesh | null) => { makePageRef(el, i); }}
                                 position={[0 - i * 0.002, 0, z]}
                                 rotation={[0, 0, 0]}
                                 castShadow
@@ -199,7 +200,7 @@ export default function Home() {
                                 <directionalLight position={[5, 8, 5]} intensity={1.1} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
 
                                 {/* Environment for reflections */}
-                                <Environment preset="studio" />
+                                <Environment files="/studio.hdr" />
 
                                 {/* The book */}
                                 <Suspense fallback={null}>

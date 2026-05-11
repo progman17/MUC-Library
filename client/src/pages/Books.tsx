@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Search, Star, BookOpen, MapPin, Library, FlaskConical } from 'lucide-react';
 import api from '../lib/api';
 import { analytics } from '../lib/analytics';
-import { getMediaUrl } from '../context/AuthContext';
+import { getMediaUrl, useAuth } from '../context/AuthContext';
 
 interface Book {
     id: string;
@@ -34,6 +34,7 @@ const Books = () => {
     const sectionParam = searchParams.get('section');
     const formatParam = searchParams.get('format');
     const categoryParam = searchParams.get('category');
+    const { user, role } = useAuth();
 
     const [books, setBooks] = useState<Book[]>([]);
     const [topRatedBooks, setTopRatedBooks] = useState<Book[]>([]);
@@ -43,7 +44,7 @@ const Books = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCollege, setSelectedCollege] = useState<string>(collegeParam || 'all');
     const [selectedCategory, setSelectedCategory] = useState(categoryParam || 'all');
-    const [selectedType, setSelectedType] = useState<'all' | 'free' | 'paid'>('all');
+    const [selectedType, setSelectedType] = useState<'all' | 'free'>('all');
     const [pageTitle, setPageTitle] = useState('Library Collection');
     const [categoryCount, setCategoryCount] = useState(0);
 
@@ -60,7 +61,18 @@ const Books = () => {
         if (selectedCollege === 'all' || colleges.find(c => c.id === selectedCollege)?.name !== 'Engineering') {
             setSelectedCategory('all');
         }
-    }, [selectedCollege, colleges]);
+        
+        // Task 3: Increment college visit count (Unique Daily Visitors)
+        if (selectedCollege !== 'all' && role !== 'admin') {
+            const STORAGE_KEY = 'muc_library_visitor_token';
+            const visitorToken = localStorage.getItem(STORAGE_KEY);
+            
+            api.post(`/colleges/${selectedCollege}/visit`, { 
+                userId: user?.id,
+                visitorToken 
+            }).catch(() => {});
+        }
+    }, [selectedCollege, colleges, user, role]);
 
     useEffect(() => {
         fetchBooks();
@@ -177,7 +189,7 @@ const Books = () => {
                         </div>
 
                         <div className="flex bg-white rounded-lg p-1 border border-gray-200 dark:bg-slate-900/50 dark:border-slate-800">
-                            {(['all', 'free', 'paid'] as const).map((type) => (
+                            {(['all', 'free'] as const).map((type) => (
                                 <button
                                     key={type}
                                     onClick={() => {
@@ -405,9 +417,8 @@ const Books = () => {
                                                     Physical
                                                 </span>
                                             ) : (
-                                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${book.type === 'free' ? 'bg-green-100 text-green-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border dark:border-emerald-900/50' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 dark:border dark:border-blue-900/50'
-                                                    }`}>
-                                                    {book.type || 'free'}
+                                                <span className="text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-green-100 text-green-700 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border dark:border-emerald-900/50">
+                                                    Digital
                                                 </span>
                                             )}
                                         </div>
