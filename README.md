@@ -44,6 +44,8 @@ React Router v6          — Client-side routing with protected routes
 SweetAlert2              — Beautiful confirmation dialogs
 Lucide React             — Consistent icon library
 react-easy-crop          — Profile picture cropping
+react hook form
+zod                      _ validation 
 ```
 
 ### Backend
