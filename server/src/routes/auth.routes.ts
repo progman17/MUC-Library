@@ -15,7 +15,7 @@ router.post('/request-otp', async (req, res) => {
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        const isAllowedEmail = email.endsWith('@muc.edu.eg') || email.endsWith('@muc.edu.eg.com');
+        const isAllowedEmail = email.endsWith('@muc.edu.eg');
 
         if (!isAllowedEmail) {
             return res.status(400).json({ error: 'Only @muc.edu.eg emails are allowed' });
@@ -33,7 +33,7 @@ router.post('/request-otp', async (req, res) => {
             });
         }
 
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const code = crypto.randomInt(100000, 1000000).toString();
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         await prisma.verification.create({
