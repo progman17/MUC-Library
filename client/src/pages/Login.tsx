@@ -1,70 +1,69 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import api from '../lib/api';
 import SEO from '../components/SEO';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { siteConfig } from '../config/siteConfig';
+import { RequestOtpSchema, VerifyOtpSchema, type RequestOtpFormValues, type VerifyOtpFormValues } from '../schema/LoginSchema';
 
 const Login = () => {
-    const [email, setEmail] = useState('');
-    const [otp, setOtp] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [verifyLoading, setVerifyLoading] = useState(false);
     const [sent, setSent] = useState(false);
-    const [error, setError] = useState('');
+    const [serverError, setServerError] = useState('');
 
     const { setAuthToken } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError('');
+    const requestOtpForm = useForm<RequestOtpFormValues>({
+        resolver: zodResolver(RequestOtpSchema),
+        defaultValues: { email: '' }
+    });
 
+    const verifyOtpForm = useForm<VerifyOtpFormValues>({
+        resolver: zodResolver(VerifyOtpSchema),
+        defaultValues: { email: '', otp: '' }
+    });
+
+    const onOtpRequest = async (data: RequestOtpFormValues) => {
+        setServerError('');
         const adminEmails = ['admin@admin.com', 'admin@muc.edu.eg'];
-        const isAllowed = email.endsWith(siteConfig.allowedEmailDomain) || adminEmails.includes(email);
+        const isAllowed = data.email.endsWith(siteConfig.allowedEmailDomain) || adminEmails.includes(data.email);
 
         if (!isAllowed) {
-            setError(`Please use your organization email (${siteConfig.allowedEmailDomain})`);
-            setLoading(false);
+            requestOtpForm.setError('email', { type: 'manual', message: `Please use your organization email (${siteConfig.allowedEmailDomain})` });
             return;
         }
 
         try {
-            await api.post('/auth/request-otp', { email });
+            await api.post('/auth/request-otp', { email: data.email });
+            verifyOtpForm.setValue('email', data.email);
             setSent(true);
         } catch (err: any) {
             console.error('Login error:', err);
-            setError(err.message || 'Failed to send verification email');
-        } finally {
-            setLoading(false);
+            setServerError(err.message || 'Failed to send verification email');
         }
     };
 
-    const handleVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setVerifyLoading(true);
-        setError('');
-
+    const onOtpVerify = async (data: VerifyOtpFormValues) => {
+        setServerError('');
         try {
-            const data = await api.post('/auth/verify-otp', { email, code: otp });
-            if (data.token) {
-                await setAuthToken(data.token);
+            const res = await api.post('/auth/verify-otp', { email: data.email, code: data.otp });
+            if (res.token) {
+                await setAuthToken(res.token);
                 navigate('/');
             } else {
                 throw new Error("Login failed, no token received.");
             }
         } catch (err: any) {
             console.error('Verification error:', err);
-            setError(err.message || 'Failed to verify code');
-        } finally {
-            setVerifyLoading(false);
+            setServerError(err.message || 'Failed to verify code');
         }
     };
 
-    const inputBase = "w-full px-4 py-3 border rounded-lg outline-none transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 border-gray-300 dark:border-slate-600";
+    const inputBase = "w-full px-4 py-3 border rounded-lg outline-none transition-all focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500";
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-950 px-4 transition-colors duration-300">
@@ -87,7 +86,8 @@ const Login = () => {
                         </div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Security Verification</h1>
                         <p className="text-gray-600 dark:text-gray-400 mb-8">Enter the 6-digit code from your email</p>
-                        <form onSubmit={handleVerify} className="space-y-6">
+                        
+                        <form onSubmit={verifyOtpForm.handleSubmit(onOtpVerify)} className="space-y-6">
                             <div className="text-left">
                                 <label htmlFor="otp" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Verification Code
@@ -95,21 +95,22 @@ const Login = () => {
                                 <input
                                     type="text"
                                     id="otp"
-                                    value={otp}
-                                    onChange={(e) => setOtp(e.target.value)}
                                     placeholder="123456"
-                                    className={`${inputBase} text-center text-2xl tracking-widest border-red-500 dark:border-red-500`}
                                     maxLength={6}
-                                    required
+                                    {...verifyOtpForm.register('otp')}
+                                    className={`${inputBase} text-center text-2xl tracking-widest ${verifyOtpForm.formState.errors.otp ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'}`}
                                 />
-                                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                                {verifyOtpForm.formState.errors.otp && (
+                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{verifyOtpForm.formState.errors.otp.message}</p>
+                                )}
+                                {serverError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{serverError}</p>}
                             </div>
                             <button
                                 type="submit"
-                                disabled={verifyLoading}
+                                disabled={verifyOtpForm.formState.isSubmitting}
                                 className="w-full bg-primary-600 text-white py-3 rounded-lg font-medium hover:bg-primary-700 dark:bg-red-700 dark:hover:bg-red-600 transition-colors flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
                             >
-                                {verifyLoading ? (
+                                {verifyOtpForm.formState.isSubmitting ? (
                                     <Loader2 className="animate-spin" size={20} />
                                 ) : (
                                     <>
@@ -119,9 +120,14 @@ const Login = () => {
                                 )}
                             </button>
                         </form>
+                        
                         <button
                             type="button"
-                            onClick={() => { setSent(false); setOtp(''); setError(''); }}
+                            onClick={() => { 
+                                setSent(false); 
+                                verifyOtpForm.reset(); 
+                                setServerError(''); 
+                            }}
                             className="w-full mt-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white font-medium transition-colors flex items-center justify-center space-x-2"
                         >
                             <ArrowLeft size={20} />
@@ -136,8 +142,9 @@ const Login = () => {
                                 <span className="text-primary-600 dark:text-red-400 font-medium">Sign in</span> to access the {siteConfig.siteName}
                             </p>
                         </div>
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div>
+                        
+                        <form onSubmit={requestOtpForm.handleSubmit(onOtpRequest)} className="space-y-6">
+                            <div className="text-left">
                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                                     Organization Email
                                 </label>
@@ -146,21 +153,22 @@ const Login = () => {
                                     <input
                                         type="email"
                                         id="email"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
                                         placeholder={`student${siteConfig.allowedEmailDomain}`}
-                                        className={`${inputBase} pl-10`}
-                                        required
+                                        {...requestOtpForm.register('email')}
+                                        className={`${inputBase} pl-10 ${requestOtpForm.formState.errors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'}`}
                                     />
                                 </div>
-                                {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                                {requestOtpForm.formState.errors.email && (
+                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">{requestOtpForm.formState.errors.email.message}</p>
+                                )}
+                                {serverError && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{serverError}</p>}
                             </div>
                             <button
                                 type="submit"
-                                disabled={loading}
+                                disabled={requestOtpForm.formState.isSubmitting}
                                 className="w-full bg-primary-600 text-white py-2.5 rounded-lg font-medium hover:bg-primary-700 dark:bg-red-700 dark:hover:bg-red-600 transition-colors flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-md dark:shadow-red-900/30"
                             >
-                                {loading ? (
+                                {requestOtpForm.formState.isSubmitting ? (
                                     <Loader2 className="animate-spin" size={20} />
                                 ) : (
                                     <>

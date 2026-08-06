@@ -18,14 +18,18 @@ const Navbar = () => {
         return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
     };
 
-    const links = [
-        { name: 'Home',       path: '/',                 icon: HomeIcon },
-        { name: 'Books',      path: '/books',            icon: BookOpen },
-        { name: 'About & The Developer', path: '/about-developers', icon: Users },
-    ];
+    let links: Array<{name: string, path: string, icon: any}> = [];
 
-    if (role === 'admin') {
-        links.push({ name: 'Admin', path: '/admin', icon: Shield });
+    if (user) {
+        links = [
+            { name: 'Home',       path: '/',                 icon: HomeIcon },
+            { name: 'Books',      path: '/books',            icon: BookOpen },
+            { name: 'About & The Developer', path: '/about-developers', icon: Users },
+        ];
+
+        if (role === 'admin') {
+            links.push({ name: 'Admin', path: '/admin', icon: Shield });
+        }
     }
 
     // Close profile dropdown when clicking outside
