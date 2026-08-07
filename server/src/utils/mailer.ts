@@ -23,7 +23,7 @@ export const sendVerificationEmail = async (
   const payload = {
     sender: {
       name: "MUC Library",
-      email: "aymankhattap2021@gmail.com" // Note: This should ideally be verified in Brevo
+      email: "aymankhattap483@gmail.com" // Note: This should ideally be verified in Brevo
     },
     to: [
       {

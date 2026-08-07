@@ -4,77 +4,93 @@
 ![Node](https://img.shields.io/badge/requires-Node.js%2018%2B-339933?style=flat-square&logo=node.js)
 ![PostgreSQL](https://img.shields.io/badge/requires-PostgreSQL%2014%2B-4169E1?style=flat-square&logo=postgresql)
 
-> **For the server administrator.** Follow these steps in order. Do not skip any step.
+> **For the Server Administrator.** Follow these steps carefully to ensure a seamless and secure deployment of the MUC Library application.
+
+---
+
+> [!IMPORTANT]
+> ## 🌐 Transitioning to Institutional Domain on Brevo (Production)
+>
+> By default, the app is configured using a personal email. For **production**, you **must** configure an institutional or college domain on Brevo to ensure high deliverability and professional communication.
+>
+> **Step-by-Step Domain Verification:**
+> 1. **Create/Login to Brevo:** Go to [Brevo](https://www.brevo.com/) and navigate to **Senders & IP > Domains**.
+> 2. **Add Domain:** Click **Add a Domain** and enter your college domain (e.g., `muc.edu.eg`).
+> 3. **DNS Configuration:** Brevo will provide specific TXT records. Access your DNS provider (e.g., Cloudflare, Route53, cPanel).
+> 4. **Add TXT Records:**
+>    - Add the **Brevo code** TXT record to verify ownership.
+>    - Add the **DKIM** record to authenticate emails and prevent spam folder routing.
+>    - Add the **SPF** record if you haven't already authorized Brevo.
+> 5. **Verify:** Go back to Brevo and click **Verify & Authenticate**.
+> 6. **Update Code:** Once verified, update the `sender` email in `server/src/utils/mailer.ts` to your new official email (e.g., `library@muc.edu.eg`).
 
 ---
 
 ## ⚠️ Prerequisites
 
-Before starting, ensure the following are installed on the server:
+Ensure the following are installed and running on the target server:
 
-| Tool | Minimum Version | Check |
+| Tool | Minimum Version | Command Check |
 |---|---|---|
-| Node.js | 18.x LTS | `node -v` |
-| npm | 9.x | `npm -v` |
-| PostgreSQL | 14.x | `psql --version` |
-| Git (optional) | Any | `git --version` |
+| **Node.js** | 18.x LTS | `node -v` |
+| **npm** | 9.x | `npm -v` |
+| **PostgreSQL**| 14.x | `psql --version` |
+| **Git** (optional) | Any | `git --version` |
 
 ---
 
-## 📂 Step 1 — Folder Structure
+## 📂 1. Folder Structure
 
-Copy the project to the server. The structure must look exactly like this:
+Transfer the project files to the server. Your directory structure should match the following precisely:
 
-```
+```text
 MUC Library/
 ├── client/        ← React frontend source
 ├── server/        ← Express backend source
-├── README.md
-└── DEPLOY.md      ← This file
+├── README.md      ← Project overview
+└── DEPLOY.md      ← Deployment instructions
 ```
 
-> **Important:** The `client/` and `server/` folders must remain siblings at the same level.
+> [!WARNING]
+> The `client/` and `server/` folders must remain siblings in the root directory for relative paths to resolve appropriately.
 
 ---
 
-## 📦 Step 2 — Install Dependencies
+## 📦 2. Install Dependencies
 
-Open a terminal and run the following commands **in order**:
+Open a terminal and execute the following commands to install required packages.
 
-### 2a. Install server dependencies
+### 2a. Backend Dependencies
 ```bash
 cd server
 npm install
 ```
 
-### 2b. Install client dependencies
+### 2b. Frontend Dependencies
 ```bash
 cd ../client
 npm install
 ```
 
-> ⏱️ This may take 2–5 minutes on first run depending on internet speed.
-
 ---
 
-## ⚙️ Step 3 — Environment Variables
+## ⚙️ 3. Environment Variables
 
-Both `client/` and `server/` require a `.env` file. Create them as follows:
+Both the frontend and backend require a `.env` configuration file.
 
-### 3a. Server `.env`  →  `server/.env`
+### 3a. Server `.env` (`server/.env`)
+
+Create `server/.env` and populate it with the following:
 
 ```env
 # ─── Database ────────────────────────────────────────
 DATABASE_URL="postgresql://USERNAME:PASSWORD@localhost:5432/muclibrary"
 
 # ─── Authentication ──────────────────────────────────
-JWT_SECRET="replace_with_a_long_random_string_min_32_chars"
+JWT_SECRET="replace_with_a_highly_secure_random_string_min_32_chars"
 
-# ─── Email (SMTP) ────────────────────────────────────
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT=587
-SMTP_USER="your_email@gmail.com"
-SMTP_PASS="your_app_password"
+# ─── Brevo API (Mailing) ─────────────────────────────
+BREVO_API_KEY="your_brevo_api_key_here"
 
 # ─── Server ──────────────────────────────────────────
 PORT=5000
@@ -82,124 +98,93 @@ PORT=5000
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | Full PostgreSQL connection string. Replace `USERNAME`, `PASSWORD`, and DB name |
-| `JWT_SECRET` | Secret key for signing JWTs. Use a random 32+ character string |
-| `SMTP_HOST` | Your SMTP provider host (e.g., `smtp.gmail.com`) |
-| `SMTP_PORT` | Usually `587` (TLS) or `465` (SSL) |
-| `SMTP_USER` | The email address that sends OTP verification codes |
-| `SMTP_PASS` | App password (for Gmail, generate one at myaccount.google.com → Security → App Passwords) |
-| `PORT` | Port the backend listens on. Default: `5000` |
+| `DATABASE_URL` | PostgreSQL connection string. Update USERNAME, PASSWORD, and database name. |
+| `JWT_SECRET` | Secret key for signing JSON Web Tokens. Must be 32+ characters. |
+| `BREVO_API_KEY`| Your Brevo API key for transactional emails. |
+| `PORT` | The port for the Express backend. Defaults to `5000`. |
 
----
+### 3b. Client `.env` (`client/.env`)
 
-### 3b. Client `.env`  →  `client/.env`
+Create `client/.env` and add the backend URL:
 
 ```env
 # URL of the backend API (no trailing slash)
 VITE_API_URL=http://YOUR_SERVER_IP:5000
 ```
 
-> Replace `YOUR_SERVER_IP` with the actual IP or domain of your server.  
-> **Example:** `VITE_API_URL=http://192.168.1.100:5000`
+> [!TIP]
+> Replace `YOUR_SERVER_IP` with the public IP address or domain name of your server. (e.g., `VITE_API_URL=https://api.muc-library.edu.eg`)
 
 ---
 
-## 🗄️ Step 4 — Database Setup
+## 🗄️ 4. Database Initialization
 
-Make sure PostgreSQL is running and a database named `muclibrary` exists.
+Ensure PostgreSQL is actively running.
 
-### 4a. Create the database (if it doesn't exist)
+### 4a. Create the Database
 ```bash
 psql -U postgres -c "CREATE DATABASE muclibrary;"
 ```
 
-### 4b. Generate the Prisma client
+### 4b. Initialize Prisma & Run Migrations
 ```bash
 cd server
 npx prisma generate
-```
-
-### 4c. Run database migrations
-```bash
 npx prisma migrate deploy
 ```
-
-> ✅ This will create all required tables in the database automatically.
-
-### 4d. (Optional) Verify the database in Prisma Studio
-```bash
-npx prisma studio
-```
-Opens a browser UI at `http://localhost:5555` to inspect the database.
+> This automatically constructs all necessary tables in your database.
 
 ---
 
-## 🗂️ Step 5 — Uploads Folder
+## 🗂️ 5. Uploads Directory Setup
 
-The server stores all uploaded files (book covers, PDFs, profile pictures) in a structured `uploads/` directory inside the `server/` folder.
+The backend stores all uploaded assets within the `server/uploads/` directory. Create these directories to prevent runtime errors:
 
-### Required structure
-```
-server/
-└── uploads/
-    ├── books-covers/    ← Book cover images
-    ├── books-pdfs/      ← Book PDF files
-    └── profiles/        ← User profile pictures
-```
-
-### Create the folders manually if they don't exist
 ```bash
 mkdir -p server/uploads/books-covers
 mkdir -p server/uploads/books-pdfs
 mkdir -p server/uploads/profiles
 ```
 
-> **If migrating from an existing installation:** Copy the entire `uploads/` folder from the old server to `server/uploads/` on the new machine. All file references in the database use relative filenames, so paths will resolve correctly as long as the folder structure is preserved.
-
 ---
 
-## 🏗️ Step 6 — Build the Frontend
+## 🏗️ 6. Build the Frontend
+
+Compile the React frontend into static, production-ready files:
 
 ```bash
 cd client
 npm run build
 ```
 
-This creates a production-optimized `client/dist/` folder with static HTML/JS/CSS files.
-
-> To serve the frontend, either:
-> - Use **Nginx** to serve `client/dist/` as a static site, or
-> - Use a static file server like `serve`: `npx serve client/dist -p 3000`
+This generates a `client/dist/` directory containing the optimized application.
 
 ---
 
-## ▶️ Step 7 — Start the Backend Server
+## ▶️ 7. Start the Backend Server (PM2)
+
+For production environments, using **PM2** is strongly recommended to ensure the backend automatically restarts on failure or server reboot.
 
 ```bash
 cd server
-npm run start
+npm install -g pm2
+pm2 start npm --name "muc-library-api" -- run start
+pm2 save
+pm2 startup
 ```
-
-> For production, it is strongly recommended to use **PM2** to keep the server alive:
-> ```bash
-> npm install -g pm2
-> pm2 start npm --name "muc-library-api" -- run start
-> pm2 save
-> pm2 startup
-> ```
 
 ---
 
-## 🌐 Step 8 — Nginx Configuration (Recommended)
+## 🌐 8. Nginx Configuration (Reverse Proxy)
 
-If using Nginx as a reverse proxy, here is a minimal working configuration:
+Configure Nginx to serve the frontend statically and proxy API requests to the backend.
 
 ```nginx
 server {
     listen 80;
     server_name YOUR_DOMAIN_OR_IP;
 
-    # Serve the React frontend
+    # 1. Serve the React Frontend
     root /path/to/MUC Liberary/client/dist;
     index index.html;
 
@@ -207,7 +192,7 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
-    # Proxy API requests to Express backend
+    # 2. Proxy API Requests to Express
     location /api/ {
         proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
@@ -217,45 +202,14 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # Serve uploaded files directly
+    # 3. Serve Uploaded Files
     location /uploads/ {
-        alias /path/to/MUC Liberary/server/uploads/;
+        alias "/path/to/MUC Liberary/server/uploads/";
+        access_log off;
+        expires max;
     }
 }
 ```
 
----
-
-## ✅ Deployment Checklist
-
-```
-[ ] Node.js 18+ installed
-[ ] PostgreSQL 14+ running
-[ ] server/.env created with all required keys
-[ ] client/.env created with correct VITE_API_URL
-[ ] npm install completed in both client/ and server/
-[ ] npx prisma generate completed
-[ ] npx prisma migrate deploy completed
-[ ] uploads/ subfolders created (books-covers, books-pdfs, profiles)
-[ ] client/ built with npm run build
-[ ] Backend server running (npm run start or PM2)
-[ ] Frontend being served (Nginx or serve)
-[ ] Firewall allows ports 80 (HTTP) and 5000 (API) or 443 (HTTPS)
-```
-
----
-
-## 🆘 Troubleshooting
-
-| Problem | Likely Cause | Fix |
-|---|---|---|
-| `Cannot connect to database` | Wrong `DATABASE_URL` | Double-check username, password, host, and DB name |
-| `OTP email not sending` | Wrong SMTP credentials | Use a Gmail App Password, not your regular password |
-| `Images not loading` | Missing `uploads/` folder | Create the folder structure in Step 5 |
-| `401 Unauthorized` on API | Missing or expired JWT | Clear localStorage and log in again |
-| `CORS error` | Wrong `VITE_API_URL` | Ensure it matches the server IP and port exactly |
-| Prisma type errors | Client not regenerated | Run `npx prisma generate` again |
-
----
-
-*MUC Library — Deployment Guide v1.0*
+> [!NOTE]
+> Ensure you replace `/path/to/MUC Liberary/` with the absolute path on your server and `YOUR_DOMAIN_OR_IP` with your actual domain.
