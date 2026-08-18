@@ -98,7 +98,7 @@ router.post('/:id/read', async (req, res) => {
 
 router.post('/', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const { title, description, category, collegeId, format, type, shelfLocation, externalLink } = req.body;
+        const { title, description, category, collegeId, format, type, shelfLocation, externalLink, coverPath, pdfPath } = req.body;
         const book = await prisma.book.create({
             data: {
                 title,
@@ -109,6 +109,8 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
                 type,
                 shelfLocation,
                 externalLink,
+                coverPath,
+                pdfPath,
                 createdById: req.user?.userId
             }
         });
@@ -120,10 +122,21 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
 
 router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     try {
-        const { title, description, category, collegeId, format, type, shelfLocation, externalLink } = req.body;
+        const { title, description, category, collegeId, format, type, shelfLocation, externalLink, coverPath, pdfPath } = req.body;
         const book = await prisma.book.update({
             where: { id: req.params.id as string },
-            data: { title, description, category, collegeId, format, type, shelfLocation, externalLink }
+            data: { 
+                title, 
+                description, 
+                category, 
+                collegeId, 
+                format, 
+                type, 
+                shelfLocation, 
+                externalLink,
+                coverPath,
+                pdfPath
+            }
         });
         res.json({ data: book });
     } catch (error: any) {
