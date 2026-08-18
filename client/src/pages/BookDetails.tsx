@@ -112,6 +112,16 @@ const BookDetails = () => {
     const coverUrl = getMediaUrl(book.coverPath);
     const pdfUrl = getMediaUrl(book.pdfPath);
 
+    const extractGoogleDriveId = (url: string | undefined | null) => {
+        if (!url) return null;
+        const match = url.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|drive\.google\.com\/uc\?.*?id=)([-_a-zA-Z0-9]+)/);
+        return match ? match[1] : null;
+    };
+
+    const googleDriveId = extractGoogleDriveId(pdfUrl);
+    const previewUrl = googleDriveId ? `https://drive.google.com/file/d/${googleDriveId}/preview` : pdfUrl;
+    const downloadUrl = googleDriveId ? `https://drive.google.com/uc?export=download&id=${googleDriveId}` : pdfUrl;
+
     return (
         <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-slate-950 transition-colors duration-700">
             <SEO
@@ -163,11 +173,13 @@ const BookDetails = () => {
                                 )}
                             </motion.div>
 
-                            <div className="w-full max-w-sm space-y-4">
+                                <div className="w-full max-w-sm space-y-4">
                                 {book.type === 'free' && pdfUrl && (
                                     <a
-                                        href={pdfUrl}
+                                        href={downloadUrl}
                                         download
+                                        target={googleDriveId ? "_blank" : undefined}
+                                        rel={googleDriveId ? "noopener noreferrer" : undefined}
                                         className="flex items-center justify-center w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors dark:bg-gradient-to-r dark:from-emerald-600 dark:to-teal-700 dark:hover:from-emerald-700 dark:hover:to-teal-800 shadow-lg dark:shadow-emerald-900/20"
                                     >
                                         <Download size={20} className="mr-2" />
@@ -280,7 +292,7 @@ const BookDetails = () => {
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Preview</h3>
                                     <div className="w-full h-[600px] bg-gray-100 rounded-xl overflow-hidden border border-gray-200 dark:bg-slate-900 dark:border-slate-700">
                                         <iframe
-                                            src={pdfUrl}
+                                            src={previewUrl}
                                             className="w-full h-full"
                                             title="PDF Viewer"
                                         />
