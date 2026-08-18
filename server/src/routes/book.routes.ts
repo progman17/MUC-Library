@@ -63,13 +63,14 @@ router.post('/:id/read', async (req, res) => {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
+            const orConditions: any[] = [];
+            if (userId) orConditions.push({ userId });
+            if (visitorToken) orConditions.push({ visitorToken });
+
             const existingVisit = await prisma.collegeVisit.findFirst({
                 where: {
                     collegeId: book.collegeId,
-                    OR: [
-                        { userId: userId || undefined },
-                        { visitorToken: visitorToken || undefined }
-                    ],
+                    OR: orConditions,
                     visitedAt: { gte: today }
                 }
             });
