@@ -52,12 +52,20 @@ const BookDetails = () => {
                     readIncrementedRef.current = true;
                     
                     const STORAGE_KEY = 'muc_library_visitor_token';
-                    const visitorToken = localStorage.getItem(STORAGE_KEY);
+                    let visitorToken = localStorage.getItem(STORAGE_KEY);
+                    if (!visitorToken) {
+                        visitorToken = crypto.randomUUID();
+                        localStorage.setItem(STORAGE_KEY, visitorToken);
+                    }
                     
                     api.post(`/books/${id}/read`, { 
                         userId: user?.id,
                         visitorToken 
-                    }).catch(() => {});
+                    }).then((response) => {
+                        if (response?.data?.readCount !== undefined) {
+                            setBook(prev => prev ? { ...prev, readCount: response.data.readCount } : null);
+                        }
+                    }).catch((err) => console.error('Failed to increment read count:', err));
                 }
             } catch (error) {
                 console.error('Error fetching book:', error);
