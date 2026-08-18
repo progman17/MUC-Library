@@ -38,20 +38,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const getMediaUrl = (filePath: string | null | undefined): string => {
     if (!filePath) return '';
 
+    // لو رابط خارجي (جوجل درايف أو غيره)
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        const match = filePath.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=)|drive\.google\.com\/uc\?.*?id=)([-_a-zA-Z0-9]+)/);
+        if (match && match[1]) {
+            return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+        }
+        return filePath;
+    }
+
     // Strip accidental leading 'uploads/' stored in DB
     let clean = filePath.replace(/^uploads[\\/]/, '').replace(/\\/g, '/');
 
     // If no subfolder is present, infer it from the filename prefix
     if (!clean.includes('/')) {
         if (clean.startsWith('cover-'))   clean = `books-covers/${clean}`;
-        else if (clean.startsWith('pdf-'))     clean = `books-pdfs/${clean}`;
+        else if (clean.startsWith('pdf-'))    clean = `books-pdfs/${clean}`;
         else if (clean.startsWith('profile-')) clean = `profiles/${clean}`;
     }
 
     const base = import.meta.env.VITE_API_URL || '';
     return `${base}/uploads/${clean}`;
 };
-
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initialUser: User | null = (() => {
         try { return JSON.parse(localStorage.getItem('user_data') || 'null'); }
