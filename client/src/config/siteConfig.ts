@@ -76,7 +76,7 @@ export const siteConfig = {
                 'with a focus on seamless user experience and robust architecture to serve our academic community.',
 
             /** Path to the developer's portrait photo inside /public. */
-            photoPath: '/Ayman.png',
+            photoPath: '/developer.png',
 
             contacts: {
                 whatsapp: 'https://wa.me/201156637548',
