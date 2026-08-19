@@ -417,7 +417,7 @@ const AdminDashboard = () => {
     };
 
     return (
-        <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-slate-950 transition-colors duration-700">
+        <div className="min-h-screen pt-24 pb-12 px-4 sm:px-6 lg:px-8 bg-gray-50/50 dark:bg-slate-950 transition-colors duration-700 overflow-x-hidden">
             <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex items-center justify-between">
                     <h1 className="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">Admin Dashboard</h1>
@@ -468,7 +468,7 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="flex space-x-1 p-1 bg-gray-200/50 dark:bg-slate-900/50 rounded-2xl w-fit backdrop-blur-md border border-white/20 dark:border-white/5">
+                <div className="flex space-x-1 p-1 bg-gray-200/50 dark:bg-slate-900/50 rounded-2xl w-full sm:w-max overflow-x-auto backdrop-blur-md border border-white/20 dark:border-white/5">
                     <button
                         onClick={() => setActiveTab('library')}
                         className={`flex items-center space-x-2 px-6 py-2.5 rounded-xl font-bold transition-all duration-300 ${activeTab === 'library' ? 'bg-white text-primary-700 shadow-sm dark:bg-slate-800 dark:text-red-400' : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
@@ -623,9 +623,9 @@ const AdminDashboard = () => {
                                             </div>
                                             Library Distribution
                                         </h3>
-                                        <div className="h-[250px] w-full">
+                                        <div className="h-[350px] w-full">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
+                                                <PieChart margin={{ bottom: 20 }}>
                                                     <Pie
                                                         data={Object.entries(bookCounts).map(([name, value]) => ({ name, value }))}
                                                         innerRadius={60}
@@ -641,7 +641,22 @@ const AdminDashboard = () => {
                                                         ))}
                                                     </Pie>
                                                     <Tooltip />
-                                                    <Legend verticalAlign="bottom" height={36}/>
+                                                    <Legend 
+                                                        verticalAlign="bottom" 
+                                                        content={(props: any) => {
+                                                            const { payload } = props;
+                                                            return (
+                                                                <ul className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-6">
+                                                                    {payload?.map((entry: any, index: number) => (
+                                                                        <li key={`item-${index}`} className="flex items-center text-xs text-gray-500 dark:text-slate-400">
+                                                                            <span className="w-3 h-3 rounded-full mr-2 shrink-0" style={{ backgroundColor: entry.color }}></span>
+                                                                            <span className="truncate max-w-[120px]" title={entry.value}>{entry.value}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            );
+                                                        }}
+                                                    />
                                                 </PieChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -698,8 +713,8 @@ const AdminDashboard = () => {
                                                     )}
                                                 </div>
 
-                                                <div className="space-y-1 mb-6">
-                                                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">{name}</h4>
+                                                <div className="space-y-1 mb-6 overflow-hidden">
+                                                    <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400 truncate" title={name}>{name}</h4>
                                                     <div className="flex items-end gap-2">
                                                         <span className="text-3xl font-black text-gray-900 dark:text-white">{visitsValue.toLocaleString()}</span>
                                                         <span className={`text-xs font-bold mb-1 flex items-center ${growth >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
